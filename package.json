@@ -7,7 +7,7 @@
     "apps/*"
   ],
   "scripts": {
-    "dev": "turbo run dev --concurrency=10",
+    "dev": "turbo run dev ",
     "dev:web": "turbo run dev --filter=@nexus/web",
     "dev:desktop": "turbo run dev --filter=@nexus/desktop",
     "build": "turbo run build",
