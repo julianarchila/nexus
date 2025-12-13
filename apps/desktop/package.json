@@ -2,13 +2,69 @@
   "name": "@nexus/desktop",
   "version": "0.1.0",
   "private": true,
-  "description": "Nexus desktop Electron application",
-  "main": "main.js",
+  "description": "Nexus Copilot - Real-time meeting assistant",
+  "main": "./out/main/index.js",
   "scripts": {
-    "dev": "electron .",
-    "start": "electron ."
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "start": "electron-vite preview",
+    "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
+    "typecheck:web": "tsc --noEmit -p tsconfig.web.json --composite false",
+    "typecheck": "npm run typecheck:node && npm run typecheck:web",
+    "build:unpack": "npm run build && electron-builder --dir",
+    "build:mac": "electron-vite build && electron-builder --mac",
+    "build:win": "npm run build && electron-builder --win",
+    "build:linux": "electron-vite build && electron-builder --linux"
+  },
+  "dependencies": {
+    "@electron-toolkit/preload": "^3.0.2",
+    "@electron-toolkit/utils": "^4.0.0"
   },
   "devDependencies": {
-    "electron": "^39.2.7"
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.1",
+    "electron": "^39.2.7",
+    "electron-builder": "^26.0.12",
+    "electron-vite": "^3.1.0",
+    "react": "^19.2.1",
+    "react-dom": "^19.2.1",
+    "typescript": "^5.9.3",
+    "vite": "^6.3.5"
+  },
+  "build": {
+    "appId": "com.nexus.copilot",
+    "productName": "Nexus Copilot",
+    "directories": {
+      "buildResources": "build",
+      "output": "dist"
+    },
+    "files": [
+      "out/**/*",
+      "!node_modules"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "hardenedRuntime": true,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist"
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "zip"
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ]
+    }
   }
 }
