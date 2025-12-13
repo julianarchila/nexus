@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'">
+  <title>Nexus</title>
+  <style>
+    :root {
+      /* Semi-transparent backgrounds (0.85 alpha) */
+      --bg-primary: rgba(24, 24, 27, 0.85);
+      --bg-secondary: rgba(32, 32, 36, 0.85);
+      --bg-tertiary: rgba(42, 42, 48, 0.85);
+      --bg-hover: rgba(52, 52, 58, 0.85);
+
+      /* Header and content backgrounds */
+      --header-background: rgba(24, 24, 27, 0.9);
+      --main-content-background: rgba(24, 24, 27, 0.85);
+
+      /* Colors */
+      --text-primary: #ffffff;
+      --text-secondary: rgba(255, 255, 255, 0.7);
+      --text-muted: rgba(255, 255, 255, 0.5);
+      --border-color: rgba(255, 255, 255, 0.1);
+      --accent-color: #6366f1;
+      --accent-hover: #818cf8;
+
+      /* Sizing */
+      --border-radius: 12px;
+      --header-height: 48px;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      height: 100%;
+      overflow: hidden;
+      background: transparent;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: var(--text-primary);
+    }
+
+    .window-container {
+      height: 100vh;
+      overflow: hidden;
+      background: var(--bg-primary);
+      border-radius: var(--border-radius);
+      border: 1px solid var(--border-color);
+    }
+
+    /* Header - draggable area */
+    .header {
+      -webkit-app-region: drag;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: var(--header-height);
+      padding: 0 16px;
+      background: var(--header-background);
+      border-bottom: 1px solid var(--border-color);
+      border-radius: var(--border-radius) var(--border-radius) 0 0;
+    }
+
+    .header-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .header-actions {
+      -webkit-app-region: no-drag;
+      display: flex;
+      gap: 8px;
+    }
+
+    .header-btn {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      border: none;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+
+    .header-btn:hover {
+      opacity: 0.8;
+    }
+
+    .btn-close {
+      background: #ff5f57;
+    }
+
+    .btn-minimize {
+      background: #febc2e;
+    }
+
+    .btn-maximize {
+      background: #28c840;
+    }
+
+    /* Main content area */
+    .main-content {
+      height: calc(100vh - var(--header-height));
+      overflow-y: auto;
+      padding: 24px;
+      background: var(--main-content-background);
+      border-radius: 0 0 var(--border-radius) var(--border-radius);
+    }
+
+    .content-card {
+      background: var(--bg-secondary);
+      border-radius: 8px;
+      padding: 20px;
+      border: 1px solid var(--border-color);
+    }
+
+    .content-card h1 {
+      font-size: 24px;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+
+    .content-card p {
+      color: var(--text-secondary);
+      line-height: 1.6;
+      margin-bottom: 8px;
+    }
+
+    .version-info {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border-color);
+    }
+
+    .version-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      font-size: 13px;
+    }
+
+    .version-label {
+      color: var(--text-muted);
+    }
+
+    .version-value {
+      color: var(--text-secondary);
+      font-family: monospace;
+    }
+
+    .shortcuts-info {
+      margin-top: 20px;
+      padding: 16px;
+      background: var(--bg-tertiary);
+      border-radius: 8px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .shortcuts-info h3 {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+    }
+
+    .shortcut {
+      display: flex;
+      justify-content: space-between;
+      padding: 4px 0;
+    }
+
+    kbd {
+      background: var(--bg-hover);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 11px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="window-container">
+    <div class="header">
+      <div class="header-title">Cluely Nexus</div>
+      <div class="header-actions">
+        <button class="header-btn btn-minimize" id="btn-minimize" title="Minimize"></button>
+        <button class="header-btn btn-maximize" id="btn-maximize" title="Maximize"></button>
+        <button class="header-btn btn-close" id="btn-close" title="Close"></button>
+      </div>
+    </div>
+    <div class="main-content">
+      <div class="content-card">
+        <h1>Welcome to Nexus</h1>
+        <p>Your floating overlay application is ready.</p>
+        <p>This window stays on top and can be moved around using keyboard shortcuts.</p>
+
+        <div class="version-info">
+          <div class="version-item">
+            <span class="version-label">Node.js</span>
+            <span class="version-value" id="node-version">-</span>
+          </div>
+          <div class="version-item">
+            <span class="version-label">Chrome</span>
+            <span class="version-value" id="chrome-version">-</span>
+          </div>
+          <div class="version-item">
+            <span class="version-label">Electron</span>
+            <span class="version-value" id="electron-version">-</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="shortcuts-info">
+        <h3>Keyboard Shortcuts</h3>
+        <div class="shortcut">
+          <span>Move window</span>
+          <span><kbd>Alt</kbd> + <kbd>Arrow Keys</kbd></span>
+        </div>
+        <div class="shortcut">
+          <span>Toggle visibility</span>
+          <span><kbd>Cmd/Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>H</kbd></span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="./renderer.js"></script>
+</body>
+
+</html>
