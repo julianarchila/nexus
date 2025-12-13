@@ -11,6 +11,8 @@
     "db": "drizzle-kit"
   },
   "dependencies": {
+    "@openrouter/ai-sdk-provider": "^1.5.3",
+    "ai": "^5.0.113",
     "dotenv": "^17.2.3",
     "drizzle-orm": "^0.45.1",
     "inngest": "^3.47.0",
