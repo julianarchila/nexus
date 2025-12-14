@@ -1,6 +1,7 @@
-import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
+
 import { MerchantsTable } from "@/components/merchants-table";
+import { Button } from "@/components/ui/button";
 
 export default function Home() {
   return (
@@ -20,7 +21,7 @@ export default function Home() {
             </span>
           </h1>
         </div>
-        
+
         <Button className="bg-blue-600 hover:bg-blue-700 text-white rounded-md px-4 h-9 shadow-sm transition-all hover:shadow">
           <Plus className="mr-2 h-4 w-4" />
           New
