@@ -4,6 +4,7 @@ import {
   ChevronDown,
   ChevronRight,
   Circle,
+  ExternalLink,
   FileText,
   Filter,
   Hash,
@@ -170,6 +171,44 @@ function getMetadataDetails(event: InboundEvent): string | null {
   }
 }
 
+/**
+ * Get source link URL for external viewing
+ * Returns null if no link is available
+ */
+function getSourceLink(
+  event: InboundEvent,
+): { url: string; label: string } | null {
+  const sourceId = event.source_id;
+  if (!sourceId) return null;
+
+  switch (event.source_type) {
+    case "MEETING":
+      // Gong call link - format: https://app.gong.io/call?id={callId}
+      return {
+        url: `https://app.gong.io/call?id=${sourceId}`,
+        label: "Open in Gong",
+      };
+    case "EMAIL": {
+      // Gmail message link - format: https://mail.google.com/mail/u/0/#inbox/{messageId}
+      // Note: messageId may need to be the thread ID for proper linking
+      const metadata = event.metadata;
+      const messageId = (metadata?.messageId as string) || sourceId;
+      return {
+        url: `https://mail.google.com/mail/u/0/#search/rfc822msgid:${encodeURIComponent(messageId)}`,
+        label: "Open in Gmail",
+      };
+    }
+    case "SLACK": {
+      // Slack permalink - would need workspace + channel + timestamp
+      // For now, return null as we don't have full permalink data
+      // TODO: Store full Slack permalink in metadata when ingesting
+      return null;
+    }
+    default:
+      return null;
+  }
+}
+
 export function EventsTable({
   events,
   search,
@@ -256,16 +295,17 @@ export function EventsTable({
           <TableHeader>
             <TableRow className="bg-slate-50/50 hover:bg-slate-50/50 border-b-slate-200">
               <TableHead className="w-[40px]" />
+              <TableHead className="w-[40px]" />
               <TableHead className="w-[100px] font-medium text-slate-500">
                 Source
               </TableHead>
-              <TableHead className="w-[200px] font-medium text-slate-500">
+              <TableHead className="w-[220px] font-medium text-slate-500">
                 Title
               </TableHead>
               <TableHead className="font-medium text-slate-500">
-                Content Preview
+                Preview
               </TableHead>
-              <TableHead className="w-[140px] font-medium text-slate-500">
+              <TableHead className="w-[120px] font-medium text-slate-500">
                 Date
               </TableHead>
             </TableRow>
@@ -274,7 +314,7 @@ export function EventsTable({
             {events.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={5}
+                  colSpan={6}
                   className="h-32 text-center text-slate-500"
                 >
                   No events found
@@ -286,6 +326,7 @@ export function EventsTable({
                 const Icon = style.icon;
                 const isExpanded = expandedRow === event.id;
                 const metadataDetails = getMetadataDetails(event);
+                const sourceLink = getSourceLink(event);
 
                 return (
                   <Fragment key={event.id}>
@@ -293,7 +334,7 @@ export function EventsTable({
                       className="group hover:bg-slate-50/50 transition-colors border-b-slate-100 cursor-pointer"
                       onClick={() => toggleExpand(event.id)}
                     >
-                      <TableCell className="pl-4">
+                      <TableCell className="pl-3 pr-0">
                         <Button
                           variant="ghost"
                           size="icon"
@@ -306,6 +347,24 @@ export function EventsTable({
                           )}
                         </Button>
                       </TableCell>
+                      <TableCell className="px-2">
+                        {sourceLink ? (
+                          <a
+                            href={sourceLink.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center justify-center h-7 w-7 rounded-md text-blue-600 hover:text-blue-800 hover:bg-blue-50 transition-colors"
+                            title={sourceLink.label}
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                          </a>
+                        ) : (
+                          <span className="inline-flex items-center justify-center h-7 w-7 text-slate-300">
+                            <ExternalLink className="h-4 w-4" />
+                          </span>
+                        )}
+                      </TableCell>
                       <TableCell>
                         <Badge
                           variant="secondary"
@@ -317,22 +376,22 @@ export function EventsTable({
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-col">
-                          <span className="font-medium text-slate-900 truncate max-w-[180px]">
+                          <span className="font-medium text-slate-900 truncate max-w-[200px]">
                             {getEventTitle(event)}
                           </span>
                           {metadataDetails && (
-                            <span className="text-xs text-slate-400">
+                            <span className="text-xs text-slate-400 truncate max-w-[200px]">
                               {metadataDetails}
                             </span>
                           )}
                         </div>
                       </TableCell>
                       <TableCell className="text-slate-600">
-                        <span className="text-sm line-clamp-2">
-                          {getContentPreview(event.raw_content)}
+                        <span className="text-sm line-clamp-1">
+                          {getContentPreview(event.raw_content, 80)}
                         </span>
                       </TableCell>
-                      <TableCell className="text-slate-500 text-sm">
+                      <TableCell className="text-slate-500 text-sm whitespace-nowrap">
                         {formatEventDate(event.created_at)}
                       </TableCell>
                     </TableRow>
@@ -340,7 +399,7 @@ export function EventsTable({
                     {/* Expanded content row */}
                     {isExpanded && (
                       <TableRow className="bg-slate-50/30">
-                        <TableCell colSpan={5} className="p-0">
+                        <TableCell colSpan={6} className="p-0">
                           <div className="px-6 py-4 border-t border-slate-100">
                             <div className="space-y-3">
                               <div className="flex items-center justify-between">
@@ -355,14 +414,28 @@ export function EventsTable({
                                 </pre>
                               </div>
                               {event.metadata && (
-                                <div className="text-xs text-slate-500">
-                                  <span className="font-medium">
-                                    Source ID:
-                                  </span>{" "}
-                                  {event.source_id || "N/A"}
-                                  {" / "}
-                                  <span className="font-medium">Status:</span>{" "}
-                                  {event.processing_status}
+                                <div className="flex items-center justify-between text-xs text-slate-500">
+                                  <div>
+                                    <span className="font-medium">
+                                      Source ID:
+                                    </span>{" "}
+                                    {event.source_id || "N/A"}
+                                    {" / "}
+                                    <span className="font-medium">Status:</span>{" "}
+                                    {event.processing_status}
+                                  </div>
+                                  {sourceLink && (
+                                    <a
+                                      href={sourceLink.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:underline font-medium"
+                                    >
+                                      <ExternalLink className="h-3 w-3" />
+                                      {sourceLink.label}
+                                    </a>
+                                  )}
                                 </div>
                               )}
                             </div>
