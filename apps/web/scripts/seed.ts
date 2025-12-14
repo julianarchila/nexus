@@ -256,7 +256,13 @@ const countryFeatures = [
     id: "mercadopago_mx",
     processor_id: "mercadopago",
     country: "MX",
-    supported_methods: ["credit_card", "debit_card", "oxxo", "spei", "efectivo"],
+    supported_methods: [
+      "credit_card",
+      "debit_card",
+      "oxxo",
+      "spei",
+      "efectivo",
+    ],
     supports_local_instruments: true,
     supports_payouts: true,
     supports_crypto: false,
@@ -478,7 +484,10 @@ async function seed() {
     // Insertar procesadores
     console.log("📦 Inserting payment processors...");
     for (const processor of processors) {
-      await db.insert(paymentProcessors).values(processor).onConflictDoNothing();
+      await db
+        .insert(paymentProcessors)
+        .values(processor)
+        .onConflictDoNothing();
     }
     console.log(`✅ Inserted ${processors.length} payment processors`);
 
@@ -496,18 +505,16 @@ async function seed() {
     console.log("\n📊 Summary:");
     console.log(`   - ${processors.length} payment processors`);
     console.log(`   - ${countryFeatures.length} country features`);
-    console.log(
-      `   - Countries covered: BR, MX, CO, AR, CL, US, PE`
-    );
+    console.log(`   - Countries covered: BR, MX, CO, AR, CL, US, PE`);
     console.log(`   - Status breakdown:`);
     console.log(
-      `     • LIVE: ${processors.filter((p) => p.status === "LIVE").length}`
+      `     • LIVE: ${processors.filter((p) => p.status === "LIVE").length}`,
     );
     console.log(
-      `     • IN_PROGRESS: ${processors.filter((p) => p.status === "IN_PROGRESS").length}`
+      `     • IN_PROGRESS: ${processors.filter((p) => p.status === "IN_PROGRESS").length}`,
     );
     console.log(
-      `     • NOT_SUPPORTED: ${processors.filter((p) => p.status === "NOT_SUPPORTED").length}`
+      `     • NOT_SUPPORTED: ${processors.filter((p) => p.status === "NOT_SUPPORTED").length}`,
     );
 
     process.exit(0);

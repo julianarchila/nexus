@@ -8,6 +8,13 @@ import {
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
+// Types for JSONB fields
+export type MerchantIntegrations = {
+  psps: string[];
+  countries: string[];
+  paymentMethods: string[];
+};
+
 // 🧾 Tabla principal de procesadores de pagos
 export const paymentProcessors = pgTable("payment_processors", {
   id: text("id").primaryKey(), // "stripe", "adyen"
@@ -66,6 +73,7 @@ export const merchant_profile = pgTable("merchant_profile", {
   id: serial("id").primaryKey(),
 
   name: text("name").notNull(),
+  contact_email: text("contact_email").notNull().unique(),
 
   status: text("status").notNull(), //
 });
@@ -76,7 +84,11 @@ export const scope_in_doc_info = pgTable("scope_in_doc_info", {
     () => merchant_profile.id,
   ),
 
-  integrations: jsonb("integrations").default("{}"),
+  integrations: jsonb("integrations").$type<MerchantIntegrations>().default({
+    psps: [],
+    countries: [],
+    paymentMethods: [],
+  }),
   volume_metrics: text("volume_metrics"),
   aproval_rate: text("aproval_rate"),
   comes_from_mof: boolean("comes_from_mof").notNull().default(false),
