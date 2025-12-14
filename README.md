@@ -1,36 +1,204 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Nexus
+
+Merchant Control & Readiness System for Yuno. Centralizes merchant context from unstructured sources (calls, emails, documents), extracts structured data using AI, and enforces readiness gates before stage transitions.
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              FRONTEND                                        │
+│                          Next.js + shadcn/ui                                │
+│                                                                              │
+│  ┌─────────────┐  ┌─────────────────┐  ┌──────────────┐  ┌──────────────┐  │
+│  │  Dashboard  │  │ Merchant Detail │  │ Scope Editor │  │ PSP Catalog  │  │
+│  │  (list)     │  │ (tabs + audit)  │  │ (edit scope) │  │ (search)     │  │
+│  └─────────────┘  └─────────────────┘  └──────────────┘  └──────────────┘  │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                      │
+                                      ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              API LAYER                                       │
+│                            TRPC (type-safe)                                 │
+│                                                                              │
+│  merchants │ scope │ pipeline │ audit │ attachments │ payments │ impls     │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                      │
+                 ┌────────────────────┼────────────────────┐
+                 ▼                    ▼                    ▼
+┌─────────────────────┐  ┌─────────────────────┐  ┌─────────────────────┐
+│     PostgreSQL      │  │       Inngest       │  │     OpenRouter      │
+│    (Drizzle ORM)    │  │   (Event Queue)     │  │     (AI/LLM)        │
+│                     │  │                     │  │                     │
+│ • merchantProfile   │  │ Event-driven        │  │ GPT-4-mini          │
+│ • scopeInDoc        │  │ processing with     │  │ Batch extraction    │
+│ • inboundEvent      │  │ retries and         │  │ of scope fields     │
+│ • aiExtraction      │  │ orchestration       │  │                     │
+│ • auditLog          │  │                     │  │                     │
+└─────────────────────┘  └─────────────────────┘  └─────────────────────┘
+                                      │
+                                      ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         INGESTION PIPELINE                                   │
+│                                                                              │
+│  ┌───────────────────────────────────┐  ┌────────────────────────────┐      │
+│  │ UNSTRUCTURED DATA                 │  │ STRUCTURED DATA            │      │
+│  │                                   │  │                            │      │
+│  │  ┌────────┐  ┌────────┐  ┌─────┐ │  │  ┌────────────────────┐   │      │
+│  │  │  Gong  │  │ Email  │  │Slack│ │  │  │   Manual Updates   │   │      │
+│  │  │   ✅   │  │(future)│  │(fut)│ │  │  │   (Scope Editor)   │   │      │
+│  │  └────────┘  └────────┘  └─────┘ │  │  └────────────────────┘   │      │
+│  │               │                   │  │            │              │      │
+│  │               ▼                   │  │            │              │      │
+│  │  ┌───────────────────────────┐   │  │            │              │      │
+│  │  │ PROCESSING                │   │  │            │              │      │
+│  │  │ Resolve → AI Extract      │   │  │            │              │      │
+│  │  └───────────────────────────┘   │  │            │              │      │
+│  │               │                   │  │            │              │      │
+│  └───────────────┼───────────────────┘  └────────────┼──────────────┘      │
+│                  │                                   │                      │
+│                  └───────────────┬───────────────────┘                      │
+│                                  ▼                                          │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │ APPLICATION                                                          │   │
+│  │ Update scope_in_doc → Create audit log                               │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Key Components
+
+**Frontend**
+- **Dashboard**: Merchant list with filtering and search
+- **Merchant Detail**: Multi-tab view (Overview, Scoping, Documents, Activity)
+- **Scope Editor**: Interactive form for editing implementation requirements
+- **PSP Catalog**: Payment processor search and capabilities
+
+**API Layer** (TRPC - type-safe)
+- `merchants`: CRUD operations, list with filters
+- `scope`: Update scope fields with audit logging
+- `pipeline`: Stage transitions with readiness validation
+- `audit`: Query change history with filters
+- `payments`: PSP catalog and country-specific features
+- `implementations`: Track PSP/payment method integration status
+
+**Database** (PostgreSQL + Drizzle ORM)
+- `merchantProfile`: Identity and lifecycle stage
+- `scopeInDoc`: Implementation requirements with field-level status tracking
+- `inboundEvent`: Polymorphic event storage (MEETING/EMAIL/SLACK/MANUAL)
+- `aiExtraction`: AI-detected changes with confidence levels
+- `auditLog`: Immutable change history with actor attribution
+- `stageTransition`: Stage change tracking with scope snapshots
+
+**Ingestion Pipeline** (Inngest)
+- **Adapters**: Normalize source-specific data (Gong ✅, Email/Slack planned)
+- **Processing**: Merchant resolution + AI extraction (batch mode)
+- **Application**: Auto-apply HIGH confidence changes + audit logging
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
+- [Bun](https://bun.sh) (v1.0+)
+- PostgreSQL (v14+)
+- Inngest CLI (for local development)
+- OpenRouter API key
+
+### Environment Setup
+
+1. Copy environment template:
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Configure environment variables in `.env`:
+   ```bash
+   DATABASE_URL=postgresql://user:password@localhost:5432/nexus
+   OPENROUTER_API_KEY=your_api_key_here
+   ```
+
+### Installation & Setup
+
+1. **Install dependencies**:
+   ```bash
+   bun install
+   ```
+
+2. **Generate database migrations** (if schema changed):
+   ```bash
+   bun drizzle-kit generate
+   ```
+
+3. **Apply migrations**:
+   ```bash
+   bun drizzle-kit migrate
+   ```
+
+4. **Seed database** (fake merchants + PSP catalog):
+   ```bash
+   bun run apps/web/scripts/seed.ts
+   ```
+
+### Running the Project
+
+You need two terminal windows:
+
+**Terminal 1 - Inngest Dev Server**:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npx inngest-cli@latest dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+**Terminal 2 - Next.js App**:
+```bash
+bun run dev
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Open [http://localhost:3000](http://localhost:3000) to view the application.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Simulating Data
 
-## Learn More
+**Simulate Gong meeting webhooks** (since we don't have a Gong account):
+```bash
+bun run apps/web/scripts/gong.ts
+```
 
-To learn more about Next.js, take a look at the following resources:
+This script sends fake meeting transcripts through the ingestion pipeline to test AI extraction and auto-application.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Project Structure
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```
+nexus/
+├── apps/web/
+│   ├── src/
+│   │   ├── app/                      # Next.js pages (App Router)
+│   │   │   ├── (dashboard)/          # Dashboard page
+│   │   │   ├── merchants/[id]/       # Merchant detail page
+│   │   │   ├── payment-processors/   # PSP catalog page
+│   │   │   └── api/                  # API routes (TRPC, Inngest)
+│   │   ├── components/               # UI components
+│   │   │   ├── ui/                   # shadcn/ui primitives
+│   │   │   ├── pipeline/             # Stage transition, readiness
+│   │   │   └── scope/                # Scope editor
+│   │   ├── core/                     # Business logic
+│   │   │   ├── db/                   # Drizzle schema + client
+│   │   │   ├── ingestion/            # AI pipeline (adapters, processing)
+│   │   │   └── services/             # Business logic (audit, pipeline)
+│   │   ├── hooks/                    # React hooks
+│   │   └── lib/                      # Utilities (TRPC, Inngest, utils)
+│   └── scripts/
+│       ├── seed.ts                   # Database seeding
+│       └── gong.ts                   # Simulate Gong webhooks
+├── docs/
+│   ├── context.md                    # System overview
+│   └── ingestion-system-design.md    # Ingestion pipeline design
+└── README.md
+```
 
-## Deploy on Vercel
+## Technical Decisions
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| Decision | Rationale |
+|----------|-----------|
+| **Bun over Node.js** | Faster package installation, native TypeScript support, built-in test runner. Simpler DX for modern TypeScript projects. |
+| **Inngest for event-driven processing** | Handles retries, orchestration, and async workflows out of the box. Decouples ingestion from processing. Visual debugging with dev UI. Scales from local dev to production without code changes. |
+| **Adapter pattern for data sources** | Each source (Gong, Email, Slack) has its own adapter that normalizes data to a common `NormalizedInboundEvent` format. Adding new sources requires only a new adapter file - no changes to core pipeline logic. |
+| **Auto-apply HIGH confidence extractions** | Reduces manual work while maintaining audit trail. AI reasoning is logged for transparency. MEDIUM/LOW confidence requires human review. |

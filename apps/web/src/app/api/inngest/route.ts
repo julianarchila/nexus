@@ -2,7 +2,12 @@ import { inngest } from "@/lib/inngest";
 import { serve } from "inngest/next";
 
 // Import new ingestion functions
-import { gongAdapter, gmailAdapter, processEvent, applyExtraction } from "@/core/ingestion";
+import {
+  gongAdapter,
+  gmailAdapter,
+  processEvent,
+  applyExtraction,
+} from "@/core/ingestion";
 
 // Import legacy functions (will be deprecated)
 import { functions as legacyFunctions } from "@/core/events";
