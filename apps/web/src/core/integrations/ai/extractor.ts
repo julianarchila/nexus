@@ -1,7 +1,7 @@
 import { generateObject } from "ai";
 import { z } from "zod";
-import { openrouter } from "@/lib/openrouter";
 import type { ConfidenceLevel, SourceType } from "@/core/db/schema";
+import { model } from "@/lib/model";
 
 // Schema for a single field extraction
 const extractionResultSchema = z.object({
@@ -147,7 +147,7 @@ export async function extractFromContent(
         : "This is from a manual entry.";
 
   const { object } = await generateObject({
-    model: openrouter("openai/gpt-5-mini"),
+    model: model,
     schema: fullExtractionSchema,
     system: EXTRACTION_PROMPT + contextPrompt,
     prompt: `${sourceContext}\n\nPlease extract actionable information from the following content:\n\n${content}`,
