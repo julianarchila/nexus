@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { ClerkProvider } from "@clerk/nextjs";
 import { TRPCReactProvider } from "@/lib/trpc/client";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import "./globals.css";
 import { TanStackDevtools } from "@tanstack/react-devtools";
@@ -28,29 +29,31 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body
-        suppressHydrationWarning
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        <SidebarProvider open={false}>
-          <AppSidebar />
-          <main className="flex-1 w-full">
-            <TRPCReactProvider>
-              {children}
-              <TanStackDevtools
-                plugins={[
-                  {
-                    name: "TanStack Query",
-                    render: <ReactQueryDevtoolsPanel />,
-                    defaultOpen: true,
-                  },
-                ]}
-              />
-            </TRPCReactProvider>
-          </main>
-        </SidebarProvider>
-      </body>
-    </html>
+    <ClerkProvider>
+      <html lang="en">
+        <body
+          suppressHydrationWarning
+          className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        >
+          <SidebarProvider open={false}>
+            <AppSidebar />
+            <main className="flex-1 w-full">
+              <TRPCReactProvider>
+                {children}
+                <TanStackDevtools
+                  plugins={[
+                    {
+                      name: "TanStack Query",
+                      render: <ReactQueryDevtoolsPanel />,
+                      defaultOpen: true,
+                    },
+                  ]}
+                />
+              </TRPCReactProvider>
+            </main>
+          </SidebarProvider>
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }

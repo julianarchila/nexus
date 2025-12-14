@@ -1,5 +1,6 @@
-import { CreditCard, Search, Settings, Shield, Store } from "lucide-react";
+import { CreditCard, Store } from "lucide-react";
 import Link from "next/link";
+import { UserButton } from "@clerk/nextjs";
 
 import {
   Sidebar,
@@ -10,6 +11,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarHeader,
+  SidebarFooter,
 } from "@/components/ui/sidebar";
 
 // Menu items.
@@ -56,6 +58,17 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      <SidebarFooter className="p-4 border-t border-gray-50">
+        <div className="flex items-center justify-center">
+          <UserButton
+            appearance={{
+              elements: {
+                avatarBox: "w-8 h-8",
+              },
+            }}
+          />
+        </div>
+      </SidebarFooter>
     </Sidebar>
   );
 }
