@@ -1,9 +1,14 @@
 "use client";
 
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import type {
-  paymentProcessors,
   countryProcessorFeatures,
+  paymentProcessors,
 } from "@/core/db/schema";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -12,68 +17,70 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useState, useTransition } from "react";
-import {
-  getPaymentProcessors,
-  getCountryProcessorFeatures,
-} from "@/core/actions/payments";
+import { useTRPC } from "@/lib/trpc/client";
 
 type PaymentProcessor = typeof paymentProcessors.$inferSelect;
 type CountryFeature = typeof countryProcessorFeatures.$inferSelect;
 
-interface PaginationInfo {
-  page: number;
-  pageSize: number;
-  total: number;
-  totalPages: number;
-}
+const STALE_TIME = 1000 * 60 * 60; // 1 hour
 
-interface ProcessorsTableProps {
-  initialData: PaymentProcessor[];
-  initialPagination: PaginationInfo;
-}
-
-export function ProcessorsTable({
-  initialData,
-  initialPagination,
-}: ProcessorsTableProps) {
-  const [processors, setProcessors] = useState(initialData);
-  const [pagination, setPagination] = useState(initialPagination);
+export function ProcessorsTable() {
   const [filters, setFilters] = useState({ status: "", search: "" });
-  const [isPending, startTransition] = useTransition();
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
 
-  const fetchData = (page: number) => {
-    startTransition(async () => {
-      const result = await getPaymentProcessors({
+  const trpc = useTRPC();
+
+  // Fetch all processors with 1 hour cache
+  const processorsQuery = useQuery({
+    ...trpc.payments.getProcessors.queryOptions({}),
+    staleTime: STALE_TIME,
+  });
+
+  const allProcessors = processorsQuery.data ?? [];
+  const isLoading = processorsQuery.isLoading;
+
+  // Client-side filtering and pagination
+  const { filteredProcessors, pagination } = useMemo(() => {
+    let filtered: PaymentProcessor[] = allProcessors;
+
+    // Apply status filter
+    if (filters.status) {
+      filtered = filtered.filter(
+        (p: PaymentProcessor) => p.status === filters.status,
+      );
+    }
+
+    // Apply search filter
+    if (filters.search) {
+      const searchLower = filters.search.toLowerCase();
+      filtered = filtered.filter(
+        (p: PaymentProcessor) =>
+          p.name.toLowerCase().includes(searchLower) ||
+          p.id.toLowerCase().includes(searchLower),
+      );
+    }
+
+    const total = filtered.length;
+    const totalPages = Math.ceil(total / pageSize);
+    const start = (page - 1) * pageSize;
+    const paginatedData = filtered.slice(start, start + pageSize);
+
+    return {
+      filteredProcessors: paginatedData,
+      pagination: {
         page,
-        pageSize: pagination.pageSize,
-        ...filters,
-      });
-      if (result.success && result.data) {
-        setProcessors(result.data);
-        setPagination(result.pagination!);
-      }
-    });
-  };
+        pageSize,
+        total,
+        totalPages,
+      },
+    };
+  }, [allProcessors, filters, page]);
 
   const handleFilterChange = (key: string, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
-    startTransition(async () => {
-      const result = await getPaymentProcessors({
-        page: 1,
-        pageSize: pagination.pageSize,
-        ...filters,
-        [key]: value,
-      });
-      if (result.success && result.data) {
-        setProcessors(result.data);
-        setPagination(result.pagination!);
-      }
-    });
+    setPage(1); // Reset to first page when filtering
   };
 
   const getStatusBadge = (status: string) => {
@@ -98,6 +105,10 @@ export function ProcessorsTable({
     const config = statusMap[status] || statusMap.NOT_SUPPORTED;
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <div className="space-y-4">
@@ -148,7 +159,7 @@ export function ProcessorsTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {processors.length === 0 ? (
+            {filteredProcessors.length === 0 ? (
               <TableRow>
                 <TableCell
                   colSpan={8}
@@ -158,7 +169,7 @@ export function ProcessorsTable({
                 </TableCell>
               </TableRow>
             ) : (
-              processors.map((processor) => (
+              filteredProcessors.map((processor: PaymentProcessor) => (
                 <TableRow
                   key={processor.id}
                   className="hover:bg-gray-50 last:border-0"
@@ -229,7 +240,7 @@ export function ProcessorsTable({
         <p className="text-sm text-muted-foreground">
           Showing{" "}
           <span className="font-medium text-foreground">
-            {processors.length}
+            {filteredProcessors.length}
           </span>{" "}
           of{" "}
           <span className="font-medium text-foreground">
@@ -240,8 +251,8 @@ export function ProcessorsTable({
         <div className="flex items-center gap-2">
           <Button
             size="sm"
-            onClick={() => fetchData(pagination.page - 1)}
-            disabled={pagination.page === 1 || isPending}
+            onClick={() => setPage(page - 1)}
+            disabled={page === 1}
           >
             Previous
           </Button>
@@ -250,8 +261,8 @@ export function ProcessorsTable({
           </span>
           <Button
             size="sm"
-            onClick={() => fetchData(pagination.page + 1)}
-            disabled={pagination.page >= pagination.totalPages || isPending}
+            onClick={() => setPage(page + 1)}
+            disabled={page >= pagination.totalPages}
           >
             Next
           </Button>
@@ -261,48 +272,55 @@ export function ProcessorsTable({
   );
 }
 
-interface CountryFeaturesTableProps {
-  initialData: CountryFeature[];
-  initialPagination: PaginationInfo;
-}
-
-export function CountryFeaturesTable({
-  initialData,
-  initialPagination,
-}: CountryFeaturesTableProps) {
-  const [features, setFeatures] = useState(initialData);
-  const [pagination, setPagination] = useState(initialPagination);
+export function CountryFeaturesTable() {
   const [filters, setFilters] = useState({ search: "" });
-  const [isPending, startTransition] = useTransition();
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
 
-  const fetchData = (page: number) => {
-    startTransition(async () => {
-      const result = await getCountryProcessorFeatures({
+  const trpc = useTRPC();
+
+  // Fetch all country features with 1 hour cache
+  const featuresQuery = useQuery({
+    ...trpc.payments.getCountryFeatures.queryOptions({}),
+    staleTime: STALE_TIME,
+  });
+
+  const allFeatures = featuresQuery.data ?? [];
+  const isLoading = featuresQuery.isLoading;
+
+  // Client-side filtering and pagination
+  const { filteredFeatures, pagination } = useMemo(() => {
+    let filtered: CountryFeature[] = allFeatures;
+
+    // Apply search filter
+    if (filters.search) {
+      const searchLower = filters.search.toLowerCase();
+      filtered = filtered.filter(
+        (f: CountryFeature) =>
+          f.country.toLowerCase().includes(searchLower) ||
+          f.processor_id.toLowerCase().includes(searchLower),
+      );
+    }
+
+    const total = filtered.length;
+    const totalPages = Math.ceil(total / pageSize);
+    const start = (page - 1) * pageSize;
+    const paginatedData = filtered.slice(start, start + pageSize);
+
+    return {
+      filteredFeatures: paginatedData,
+      pagination: {
         page,
-        pageSize: pagination.pageSize,
-        ...filters,
-      });
-      if (result.success && result.data) {
-        setFeatures(result.data);
-        setPagination(result.pagination!);
-      }
-    });
-  };
+        pageSize,
+        total,
+        totalPages,
+      },
+    };
+  }, [allFeatures, filters, page]);
 
   const handleFilterChange = (key: string, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
-    startTransition(async () => {
-      const result = await getCountryProcessorFeatures({
-        page: 1,
-        pageSize: pagination.pageSize,
-        ...filters,
-        [key]: value,
-      });
-      if (result.success && result.data) {
-        setFeatures(result.data);
-        setPagination(result.pagination!);
-      }
-    });
+    setPage(1); // Reset to first page when filtering
   };
 
   const getStatusBadge = (status: string) => {
@@ -326,6 +344,10 @@ export function CountryFeaturesTable({
     const config = statusMap[status] || statusMap.NOT_SUPPORTED;
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <div className="space-y-4">
@@ -362,7 +384,7 @@ export function CountryFeaturesTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {features.length === 0 ? (
+            {filteredFeatures.length === 0 ? (
               <TableRow>
                 <TableCell
                   colSpan={7}
@@ -372,7 +394,7 @@ export function CountryFeaturesTable({
                 </TableCell>
               </TableRow>
             ) : (
-              features.map((feature) => (
+              filteredFeatures.map((feature: CountryFeature) => (
                 <TableRow
                   key={feature.id}
                   className="hover:bg-gray-50 last:border-0"
@@ -424,9 +446,9 @@ export function CountryFeaturesTable({
                         <>
                           {feature.supported_methods
                             .slice(0, 3)
-                            .map((method, idx) => (
+                            .map((method: string, idx: number) => (
                               <Badge
-                                key={idx}
+                                key={`${feature.id}-${method}-${idx}`}
                                 variant="secondary"
                                 className="text-xs"
                               >
@@ -455,7 +477,9 @@ export function CountryFeaturesTable({
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
           Showing{" "}
-          <span className="font-medium text-foreground">{features.length}</span>{" "}
+          <span className="font-medium text-foreground">
+            {filteredFeatures.length}
+          </span>{" "}
           of{" "}
           <span className="font-medium text-foreground">
             {pagination.total}
@@ -466,8 +490,8 @@ export function CountryFeaturesTable({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => fetchData(pagination.page - 1)}
-            disabled={pagination.page === 1 || isPending}
+            onClick={() => setPage(page - 1)}
+            disabled={page === 1}
           >
             Previous
           </Button>
@@ -477,8 +501,8 @@ export function CountryFeaturesTable({
           <Button
             variant="default"
             size="sm"
-            onClick={() => fetchData(pagination.page + 1)}
-            disabled={pagination.page >= pagination.totalPages || isPending}
+            onClick={() => setPage(page + 1)}
+            disabled={page >= pagination.totalPages}
           >
             Next
           </Button>
@@ -487,19 +511,8 @@ export function CountryFeaturesTable({
     </div>
   );
 }
-interface DashboardTabsProps {
-  processorsData: PaymentProcessor[];
-  processorsPagination: PaginationInfo;
-  featuresData: CountryFeature[];
-  featuresPagination: PaginationInfo;
-}
 
-export function DashboardTabs({
-  processorsData,
-  processorsPagination,
-  featuresData,
-  featuresPagination,
-}: DashboardTabsProps) {
+export function DashboardTabs() {
   return (
     <Tabs defaultValue="processors" className="w-full">
       <TabsList className="w-full sm:w-auto">
@@ -507,16 +520,10 @@ export function DashboardTabs({
         <TabsTrigger value="features">Country-Specific Features</TabsTrigger>
       </TabsList>
       <TabsContent value="processors" className="mt-6">
-        <ProcessorsTable
-          initialData={processorsData}
-          initialPagination={processorsPagination}
-        />
+        <ProcessorsTable />
       </TabsContent>
       <TabsContent value="features" className="mt-6">
-        <CountryFeaturesTable
-          initialData={featuresData}
-          initialPagination={featuresPagination}
-        />
+        <CountryFeaturesTable />
       </TabsContent>
     </Tabs>
   );
