@@ -1,6 +1,6 @@
 import { inngest } from "@/lib/inngest";
 import { db } from "@/core/db/client";
-import { aiExtraction, scopeInDoc } from "@/core/db/schema";
+import { aiExtraction, inboundEvent, scopeInDoc } from "@/core/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import { applyExtractionToScope } from "../services/applicator";
 import { createAuditLog } from "@/core/services/audit/audit-logger";
@@ -31,7 +31,22 @@ export const applyExtraction = inngest.createFunction(
         .where(inArray(aiExtraction.id, extractionIds));
     });
 
-    // Step 2: Find scope_in_doc for merchant
+    // Step 2: Load inbound event to get source type
+    const inboundEventData = await step.run("load-inbound-event", async () => {
+      const [event] = await db
+        .select()
+        .from(inboundEvent)
+        .where(eq(inboundEvent.id, inboundEventId))
+        .limit(1);
+
+      if (!event) {
+        throw new Error(`Inbound event not found: ${inboundEventId}`);
+      }
+
+      return event;
+    });
+
+    // Step 3: Find scope_in_doc for merchant
     const scope = await step.run("load-scope", async () => {
       const [s] = await db
         .select()
@@ -46,7 +61,7 @@ export const applyExtraction = inngest.createFunction(
       return s;
     });
 
-    // Step 3: Process HIGH confidence extractions
+    // Step 4: Process HIGH confidence extractions
     const highConfidenceExtractions = extractions.filter(
       (e) => e.confidence === "HIGH",
     );
@@ -76,7 +91,7 @@ export const applyExtraction = inngest.createFunction(
               oldValue: result.oldValue,
               newValue: result.newValue,
               actorType: "AI",
-              sourceType: "MEETING", // TODO: Get from inbound_event
+              sourceType: inboundEventData.source_type,
               sourceId: inboundEventId,
               reason: `AI extraction with HIGH confidence: ${extraction.reasoning}`,
               aiExtractionId: extraction.id,

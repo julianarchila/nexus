@@ -226,35 +226,3 @@ export async function calculateImplementationReadiness(
     },
   };
 }
-
-/**
- * Get a human-readable label for an implementation status
- */
-export function getImplementationStatusLabel(
-  status: ImplementationStatus,
-): string {
-  const labels: Record<ImplementationStatus, string> = {
-    PENDING: "Pending",
-    IN_PROGRESS: "In Progress",
-    LIVE: "Live",
-    BLOCKED: "Blocked",
-    NOT_REQUIRED: "Not Required",
-  };
-  return labels[status];
-}
-
-/**
- * Get a color class for an implementation status (for UI)
- */
-export function getImplementationStatusColor(
-  status: ImplementationStatus,
-): string {
-  const colors: Record<ImplementationStatus, string> = {
-    PENDING: "bg-gray-100 text-gray-800",
-    IN_PROGRESS: "bg-blue-100 text-blue-800",
-    LIVE: "bg-green-100 text-green-800",
-    BLOCKED: "bg-red-100 text-red-800",
-    NOT_REQUIRED: "bg-slate-100 text-slate-600",
-  };
-  return colors[status];
-}

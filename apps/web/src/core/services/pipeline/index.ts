@@ -2,8 +2,6 @@
 
 export {
   calculateImplementationReadiness,
-  getImplementationStatusColor,
-  getImplementationStatusLabel,
   type ImplementationReadinessResult,
   type PaymentMethodImplementationSummary,
   type PspImplementationSummary,
