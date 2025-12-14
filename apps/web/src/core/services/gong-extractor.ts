@@ -3,11 +3,15 @@ import { z } from "zod";
 import { openrouter } from "@/lib/openrouter";
 import { db } from "@/core/db/client";
 import { eq } from "drizzle-orm";
-import {
-  merchant_profile,
-  scope_in_doc_info,
-  type MerchantIntegrations,
-} from "@/core/db/schema";
+import { merchantProfile, scopeInDoc } from "@/core/db/schema";
+import { nanoid } from "nanoid";
+
+// Legacy type for backward compatibility
+interface MerchantIntegrations {
+  psps: string[];
+  countries: string[];
+  paymentMethods: string[];
+}
 
 // Schema for the extracted data from the meeting summary
 const extractedDataSchema = z.object({
@@ -105,7 +109,7 @@ export interface GongEventData {
 
 export interface ExtractionResult {
   success: boolean;
-  merchantId?: number;
+  merchantId?: string;
   merchantName?: string;
   extractedData?: ExtractedData;
   updatedFields?: string[];
@@ -205,8 +209,8 @@ export async function processGongMeeting(
   // 2. Find merchant by contact email
   const merchant = await db
     .select()
-    .from(merchant_profile)
-    .where(eq(merchant_profile.contact_email, contactEmail))
+    .from(merchantProfile)
+    .where(eq(merchantProfile.contact_email, contactEmail))
     .limit(1);
 
   if (merchant.length === 0) {
@@ -221,16 +225,22 @@ export async function processGongMeeting(
 
   const merchantRecord = merchant[0];
 
-  // 3. Get current scope_in_doc_info for the merchant
+  // 3. Get current scope_in_doc for the merchant
   const existingScope = await db
     .select()
-    .from(scope_in_doc_info)
-    .where(eq(scope_in_doc_info.merchant_profile_id, merchantRecord.id))
+    .from(scopeInDoc)
+    .where(eq(scopeInDoc.merchant_id, merchantRecord.id))
     .limit(1);
 
   const currentScope = existingScope[0];
-  const currentIntegrations =
-    (currentScope?.integrations as MerchantIntegrations) ?? null;
+  // Adapt new schema to legacy format
+  const currentIntegrations: MerchantIntegrations | null = currentScope
+    ? {
+        psps: (currentScope.psps as string[]) ?? [],
+        countries: (currentScope.countries as string[]) ?? [],
+        paymentMethods: (currentScope.payment_methods as string[]) ?? [],
+      }
+    : null;
   const isNewDocument = !currentScope;
 
   // 4. Extract information from meeting summary
@@ -277,11 +287,11 @@ export async function processGongMeeting(
       },
     },
     volumeMetrics: {
-      before: currentScope?.volume_metrics ?? null,
+      before: currentScope?.expected_volume ?? null,
       after: extractedData.volumeMetrics,
     },
     approvalRate: {
-      before: currentScope?.aproval_rate ?? null,
+      before: currentScope?.expected_approval_rate ?? null,
       after: extractedData.approvalRate,
     },
     dealClosedBy: {
@@ -289,7 +299,7 @@ export async function processGongMeeting(
       after: extractedData.dealClosedBy,
     },
     comesFromMof: {
-      before: currentScope?.comes_from_mof ?? null,
+      before: currentScope?.comes_from_mor ?? null,
       after: extractedData.comesFromMof,
     },
     isNewDocument,
@@ -298,29 +308,33 @@ export async function processGongMeeting(
   // 7. Build update object (only update fields that have new data)
   const updatedFields: string[] = [];
   const updateData: Partial<{
-    integrations: MerchantIntegrations;
-    volume_metrics: string;
-    aproval_rate: string;
+    psps: string[];
+    countries: string[];
+    payment_methods: string[];
+    expected_volume: string;
+    expected_approval_rate: string;
     deal_closed_by: string;
-    comes_from_mof: boolean;
+    comes_from_mor: boolean;
   }> = {};
 
   // Check if integrations changed
   if (
     JSON.stringify(mergedIntegrations) !== JSON.stringify(currentIntegrations)
   ) {
-    updateData.integrations = mergedIntegrations;
-    updatedFields.push("integrations");
+    updateData.psps = mergedIntegrations.psps;
+    updateData.countries = mergedIntegrations.countries;
+    updateData.payment_methods = mergedIntegrations.paymentMethods;
+    updatedFields.push("psps", "countries", "payment_methods");
   }
 
   if (extractedData.volumeMetrics) {
-    updateData.volume_metrics = extractedData.volumeMetrics;
-    updatedFields.push("volume_metrics");
+    updateData.expected_volume = extractedData.volumeMetrics;
+    updatedFields.push("expected_volume");
   }
 
   if (extractedData.approvalRate) {
-    updateData.aproval_rate = extractedData.approvalRate;
-    updatedFields.push("aproval_rate");
+    updateData.expected_approval_rate = extractedData.approvalRate;
+    updatedFields.push("expected_approval_rate");
   }
 
   if (extractedData.dealClosedBy) {
@@ -329,31 +343,30 @@ export async function processGongMeeting(
   }
 
   if (extractedData.comesFromMof !== null) {
-    updateData.comes_from_mof = extractedData.comesFromMof;
-    updatedFields.push("comes_from_mof");
+    updateData.comes_from_mor = extractedData.comesFromMof;
+    updatedFields.push("comes_from_mor");
   }
 
-  // 8. Update or create scope_in_doc_info
+  // 8. Update or create scope_in_doc
   if (updatedFields.length > 0) {
     if (currentScope) {
       // Update existing record
       await db
-        .update(scope_in_doc_info)
+        .update(scopeInDoc)
         .set(updateData)
-        .where(eq(scope_in_doc_info.id, currentScope.id));
+        .where(eq(scopeInDoc.id, currentScope.id));
     } else {
       // Create new record
-      await db.insert(scope_in_doc_info).values({
-        merchant_profile_id: merchantRecord.id,
-        integrations: updateData.integrations ?? {
-          psps: [],
-          countries: [],
-          paymentMethods: [],
-        },
-        volume_metrics: updateData.volume_metrics ?? null,
-        aproval_rate: updateData.aproval_rate ?? null,
+      await db.insert(scopeInDoc).values({
+        id: nanoid(),
+        merchant_id: merchantRecord.id,
+        psps: updateData.psps ?? [],
+        countries: updateData.countries ?? [],
+        payment_methods: updateData.payment_methods ?? [],
+        expected_volume: updateData.expected_volume ?? null,
+        expected_approval_rate: updateData.expected_approval_rate ?? null,
         deal_closed_by: updateData.deal_closed_by ?? null,
-        comes_from_mof: updateData.comes_from_mof ?? false,
+        comes_from_mor: updateData.comes_from_mor ?? false,
       });
       updatedFields.push("(created new scope document)");
     }
