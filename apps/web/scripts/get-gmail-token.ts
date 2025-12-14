@@ -13,9 +13,14 @@
 import { google } from "googleapis";
 import * as readline from "node:readline";
 
-const CLIENT_ID = "30729564242-to3o4bnhrfgegtcbjhhhot22negsni80.apps.googleusercontent.com";
-const CLIENT_SECRET = "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";
-const REDIRECT_URI = "http://localhost:3000/oauth2callback";
+const CLIENT_ID = process.env.GMAIL_CLIENT_ID;
+const CLIENT_SECRET = process.env.GMAIL_CLIENT_SECRET;
+const REDIRECT_URI = process.env.GMAIL_REDIRECT_URI || "http://localhost:3000/oauth2callback";
+
+if (!CLIENT_ID || !CLIENT_SECRET) {
+    console.error("❌ Error: GMAIL_CLIENT_ID and GMAIL_CLIENT_SECRET must be set in .env file");
+    process.exit(1);
+}
 
 // Gmail scopes needed
 const SCOPES = [

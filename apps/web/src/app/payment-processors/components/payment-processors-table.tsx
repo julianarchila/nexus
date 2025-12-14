@@ -70,9 +70,9 @@ function BadgesWithPopover({ items, max = 3 }: { items: string[]; max?: number }
               </p>
               <div className="max-h-[300px] overflow-y-auto space-y-1.5">
                 {items.map((item, index) => (
-                  <Badge 
-                    key={index} 
-                    variant="secondary" 
+                  <Badge
+                    key={index}
+                    variant="secondary"
                     className="text-xs font-normal mr-1 mb-1"
                   >
                     {item}

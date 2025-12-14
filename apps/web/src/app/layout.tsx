@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { TRPCReactProvider } from "@/lib/trpc/client";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
+import { AIAssistantSidebar } from "@/components/ai-assistant-sidebar";
 import "./globals.css";
 import { TanStackDevtools } from "@tanstack/react-devtools";
 import { ReactQueryDevtoolsPanel } from "@tanstack/react-query-devtools";
@@ -38,6 +39,7 @@ export default function RootLayout({
           <main className="flex-1 w-full">
             <TRPCReactProvider>
               {children}
+              <AIAssistantSidebar />
               <TanStackDevtools
                 plugins={[
                   {

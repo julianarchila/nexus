@@ -1,7 +1,4 @@
-import { Plus } from "lucide-react";
-
 import { MerchantsTable } from "@/components/merchants-table";
-import { Button } from "@/components/ui/button";
 
 export default function Home() {
   return (
