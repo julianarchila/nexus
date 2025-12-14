@@ -1,39 +1,51 @@
-"use client";
+import {
+  getPaymentProcessors,
+  getCountryProcessorFeatures,
+} from "@/core/actions/payments";
+import { DashboardTabs } from "@/components/payments";
 
-import { useQuery } from "@tanstack/react-query";
-import { useTRPC } from "@/lib/trpc/client";
+export default async function Home() {
+  const [processorsResult, featuresResult] = await Promise.all([
+    getPaymentProcessors({ page: 1, pageSize: 10 }),
+    getCountryProcessorFeatures({ page: 1, pageSize: 10 }),
+  ]);
 
-export default function Home() {
-  const trpc = useTRPC();
-  const {
-    data: merchants,
-    isLoading,
-    error,
-  } = useQuery(trpc.merchants.list.queryOptions());
+  if (!processorsResult.success || !processorsResult.data || !processorsResult.pagination ||
+    !featuresResult.success || !featuresResult.data || !featuresResult.pagination) {
+    return (
+      <div className="min-h-screen bg-background p-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
+            <p className="text-destructive">
+              {processorsResult.error || featuresResult.error || "Failed to load data"}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-zinc-50 p-8 font-sans dark:bg-black">
-      <h1 className="mb-6 text-2xl font-bold">Merchants</h1>
+    <div className="w-full flex ">
+      <div className="min-h-screen bg-white p-6 w-full flex items-center justify-center">
+        <div className="max-w-7xl w-full space-y-6">
+          <header>
+            <h1 className="text-3xl font-bold tracking-tight">
+              Payment Processors
+            </h1>
+            <p className="text-muted-foreground mt-2">
+              Manage payment processors and their country-specific features
+            </p>
+          </header>
 
-      {isLoading && <p>Loading merchants...</p>}
-
-      {error && <p className="text-red-500">Error: {error.message}</p>}
-
-      {merchants && merchants.length === 0 && <p>No merchants found.</p>}
-
-      {merchants && merchants.length > 0 && (
-        <ul className="w-full max-w-md space-y-2">
-          {merchants.map((merchant) => (
-            <li
-              key={merchant.id}
-              className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800"
-            >
-              <p className="font-medium">{merchant.name}</p>
-              <p className="text-sm text-zinc-500">Status: {merchant.status}</p>
-            </li>
-          ))}
-        </ul>
-      )}
+          <DashboardTabs
+            processorsData={processorsResult.data}
+            processorsPagination={processorsResult.pagination}
+            featuresData={featuresResult.data}
+            featuresPagination={featuresResult.pagination}
+          />
+        </div>
+      </div>
     </div>
   );
 }
