@@ -10,6 +10,8 @@
     "seed": "tsx scripts/seed.ts"
   },
   "dependencies": {
+    "@ai-sdk/google": "^2.0.46",
+    "@composio/core": "^0.2.6",
     "@hookform/resolvers": "^5.2.2",
     "@openrouter/ai-sdk-provider": "^1.5.3",
     "@radix-ui/react-dialog": "^1.1.15",

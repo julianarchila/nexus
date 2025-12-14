@@ -6,6 +6,7 @@
  */
 
 export { gmailAdapter } from "./adapters/gmail.adapter";
+export { gmailComposioAdapter } from "./adapters/gmail-composio.adapter";
 export { gongAdapter } from "./adapters/gong.adapter";
 export { processEvent } from "./process-event";
 export { applyExtraction } from "./apply-extraction";
