@@ -71,9 +71,9 @@
 }
 
 :root {
-  --background: oklch(0.9761 0 0);
+  --background: #ffffff;
   --foreground: oklch(0.1408 0.0044 285.8229);
-  --card: oklch(1.0000 0 0);
+  --card: #fefefe;
   --card-foreground: oklch(0.1408 0.0044 285.8229);
   --popover: oklch(1.0000 0 0);
   --popover-foreground: oklch(0.1408 0.0044 285.8229);
@@ -184,5 +184,15 @@
 @layer base {
   body {
     letter-spacing: var(--tracking-normal);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
   }
 }
