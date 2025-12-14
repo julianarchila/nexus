@@ -3,11 +3,18 @@ import { serve } from "inngest/next";
 import {
   gongAdapter,
   gmailAdapter,
+  gmailComposioAdapter,
   processEvent,
   applyExtraction,
 } from "@/core/workflows";
 
 export const { GET, POST, PUT } = serve({
   client: inngest,
-  functions: [gongAdapter, gmailAdapter, processEvent, applyExtraction],
+  functions: [
+    gongAdapter,
+    gmailAdapter,
+    gmailComposioAdapter,
+    processEvent,
+    applyExtraction,
+  ],
 });
