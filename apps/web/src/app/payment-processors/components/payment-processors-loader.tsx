@@ -13,8 +13,12 @@ export function PaymentProcessorsLoader() {
     <div className="space-y-4">
       {/* Search and filters skeleton */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <Skeleton className="h-10 w-full sm:max-w-md" />
-        <Skeleton className="h-10 w-24" />
+        <div className="flex-1 min-w-[280px] sm:max-w-md">
+          <Skeleton className="h-10 w-full" />
+        </div>
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-10 w-24" />
+        </div>
       </div>
 
       {/* Table skeleton */}
@@ -46,7 +50,7 @@ export function PaymentProcessorsLoader() {
           </TableHeader>
           <TableBody>
             {Array.from({ length: 5 }).map((_, i) => (
-              <TableRow key={i}>
+              <TableRow key={`skeleton-row-${i}`}>
                 <TableCell>
                   <div className="space-y-2">
                     <Skeleton className="h-4 w-32" />

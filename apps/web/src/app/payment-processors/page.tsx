@@ -4,21 +4,19 @@ import { PaymentProcessorsContainer } from "./components/payment-processors-cont
 
 export default function PaymentProcessorsPage() {
   return (
-    <div className="w-full flex mt-4">
-      <div className="min-h-screen bg-white p-6 w-full flex items-center justify-center">
-        <div className="max-w-7xl w-full space-y-6">
-          <header>
-            <h1 className="text-3xl font-bold tracking-tight">
-              Payment Processors
-            </h1>
-            <p className="text-muted-foreground mt-2">
-              Search and filter to check supported PSPs, countries, and payment
-              methods.
-            </p>
-          </header>
+    <div className="w-full bg-[#f6f9fc] min-h-screen">
+      <div className="max-w-[1400px] mx-auto px-6 py-8">
+        <header className="mb-8">
+          <h1 className="text-[28px] font-semibold text-[#0a2540] mb-2">
+            Payment Processors
+          </h1>
+          <p className="text-[15px] text-[#425466]">
+            Search and filter to check supported PSPs, countries, and payment
+            methods.
+          </p>
+        </header>
 
-          <PaymentProcessorsContainer />
-        </div>
+        <PaymentProcessorsContainer />
       </div>
     </div>
   );

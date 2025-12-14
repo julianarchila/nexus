@@ -22,7 +22,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { SlidersHorizontal } from "lucide-react";
-import type { PaymentProcessor, DerivedSupport } from "../hooks/use-payment-processors-data";
+import type {
+  PaymentProcessor,
+  DerivedSupport,
+} from "../hooks/use-payment-processors-data";
 import type {
   PaymentProcessorsFilters,
   CapabilityFilters,
@@ -32,7 +35,7 @@ import type {
 
 function renderBadges(items: string[], max = 3) {
   if (items.length === 0) {
-    return <span className="text-muted-foreground">—</span>;
+    return <span className="text-[#8898aa]">—</span>;
   }
 
   const shown = items.slice(0, max);
@@ -41,12 +44,12 @@ function renderBadges(items: string[], max = 3) {
   return (
     <div className="flex flex-wrap gap-1.5">
       {shown.map((item) => (
-        <Badge key={item} variant="secondary" className="text-xs">
+        <Badge key={item} variant="secondary" className="text-xs font-normal">
           {item}
         </Badge>
       ))}
       {remaining > 0 && (
-        <Badge variant="outline" className="text-xs">
+        <Badge variant="outline" className="text-xs font-normal">
           +{remaining}
         </Badge>
       )}
@@ -74,16 +77,18 @@ function getStatusBadge(status: string) {
     DEPRECATED: { label: "Deprecated", variant: "destructive" },
   };
   const config = statusMap[status] || statusMap.NOT_SUPPORTED;
-  return <Badge variant={config.variant}>{config.label}</Badge>;
+  return (
+    <Badge variant={config.variant} className="font-normal">
+      {config.label}
+    </Badge>
+  );
 }
 
 function CapabilityCell({ enabled }: { enabled: boolean }) {
   return (
     <span
       className={
-        enabled
-          ? "text-green-600 dark:text-green-400"
-          : "text-muted-foreground"
+        enabled ? "text-[#00d924] text-base font-semibold" : "text-[#8898aa]"
       }
     >
       {enabled ? "✓" : "—"}
@@ -118,11 +123,11 @@ function FiltersDropdown({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline">
-          <SlidersHorizontal />
-          Filters
+        <Button variant="outline" className="h-9 text-[14px]">
+          <SlidersHorizontal className="w-4 h-4" />
+          Add filter
           {activeFiltersCount > 0 && (
-            <Badge variant="secondary" className="ml-1">
+            <Badge variant="secondary" className="ml-1 font-normal">
               {activeFiltersCount}
             </Badge>
           )}
@@ -219,10 +224,10 @@ function Pagination({
 }: PaginationProps) {
   return (
     <div className="flex items-center justify-between">
-      <p className="text-sm text-muted-foreground">
+      <p className="text-[14px] text-[#425466]">
         Showing{" "}
-        <span className="font-medium text-foreground">{displayedCount}</span> of{" "}
-        <span className="font-medium text-foreground">{totalCount}</span>{" "}
+        <span className="font-medium text-[#0a2540]">{displayedCount}</span> of{" "}
+        <span className="font-medium text-[#0a2540]">{totalCount}</span>{" "}
         processors
       </p>
       <div className="flex items-center gap-2">
@@ -231,16 +236,19 @@ function Pagination({
           size="sm"
           onClick={() => onPageChange(page - 1)}
           disabled={page === 1}
+          className="h-8 text-[14px]"
         >
           Previous
         </Button>
-        <span className="text-sm px-2">
+        <span className="text-[14px] px-2 text-[#425466]">
           Page {page} of {totalPages}
         </span>
         <Button
+          variant="outline"
           size="sm"
           onClick={() => onPageChange(page + 1)}
           disabled={page >= totalPages}
+          className="h-8 text-[14px]"
         >
           Next
         </Button>
@@ -261,32 +269,34 @@ function ProcessorRow({ processor, derived }: ProcessorRowProps) {
   const methods = derived?.methods ?? [];
 
   return (
-    <TableRow className="hover:bg-gray-50 last:border-0">
-      <TableCell>
-        <div className="font-medium">{processor.name}</div>
-        <div className="text-muted-foreground font-mono text-xs">
+    <TableRow className="hover:bg-[#f6f9fc] border-b border-[#e6ebf1]">
+      <TableCell className="py-4">
+        <div className="font-medium text-[#0a2540] text-[14px]">
+          {processor.name}
+        </div>
+        <div className="text-[#8898aa] font-mono text-[13px] mt-0.5">
           {processor.id}
         </div>
       </TableCell>
-      <TableCell>{getStatusBadge(processor.status)}</TableCell>
-      <TableCell className="text-center">
+      <TableCell className="py-4">{getStatusBadge(processor.status)}</TableCell>
+      <TableCell className="text-center py-4">
         <CapabilityCell enabled={!!derived?.supports_payouts} />
       </TableCell>
-      <TableCell className="text-center">
+      <TableCell className="text-center py-4">
         <CapabilityCell enabled={processor.supports_recurring} />
       </TableCell>
-      <TableCell className="text-center">
+      <TableCell className="text-center py-4">
         <CapabilityCell enabled={processor.supports_refunds} />
       </TableCell>
-      <TableCell className="text-center">
+      <TableCell className="text-center py-4">
         <CapabilityCell enabled={!!derived?.supports_crypto} />
       </TableCell>
-      <TableCell className="text-center">
+      <TableCell className="text-center py-4">
         <CapabilityCell enabled={!!derived?.supports_local_instruments} />
       </TableCell>
-      <TableCell>{renderBadges(countries, 3)}</TableCell>
-      <TableCell>{renderBadges(methods, 3)}</TableCell>
-      <TableCell className="text-muted-foreground text-sm">
+      <TableCell className="py-4">{renderBadges(countries, 3)}</TableCell>
+      <TableCell className="py-4">{renderBadges(methods, 3)}</TableCell>
+      <TableCell className="text-[#8898aa] text-[14px] py-4">
         {processor.product_manager || "—"}
       </TableCell>
     </TableRow>
@@ -320,9 +330,10 @@ export function PaymentProcessorsTable({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex-1 min-w-[280px] sm:max-w-md">
           <Input
-            placeholder="Search PSP, country, or payment method..."
+            placeholder="Search"
             value={search}
             onChange={(e) => updateSearch(e.target.value)}
+            className="h-9 text-[14px] bg-white border-[#e6ebf1] placeholder:text-[#8898aa]"
           />
         </div>
 
@@ -336,30 +347,40 @@ export function PaymentProcessorsTable({
       </div>
 
       {/* Table */}
-      <div className="rounded-lg bg-white overflow-hidden border">
+      <div className="rounded-lg bg-white overflow-hidden border border-[#e6ebf1] shadow-sm">
         <Table>
           <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <TableHead className="font-semibold">Processor</TableHead>
-              <TableHead className="font-semibold">Status</TableHead>
-              <TableHead className="font-semibold text-center">
+            <TableRow className="hover:bg-transparent border-b border-[#e6ebf1] bg-white">
+              <TableHead className="font-medium text-[#425466] text-[13px] py-3">
+                Processor
+              </TableHead>
+              <TableHead className="font-medium text-[#425466] text-[13px] py-3">
+                Status
+              </TableHead>
+              <TableHead className="font-medium text-[#425466] text-[13px] text-center py-3">
                 Payouts
               </TableHead>
-              <TableHead className="font-semibold text-center">
+              <TableHead className="font-medium text-[#425466] text-[13px] text-center py-3">
                 Recurring
               </TableHead>
-              <TableHead className="font-semibold text-center">
+              <TableHead className="font-medium text-[#425466] text-[13px] text-center py-3">
                 Refunds
               </TableHead>
-              <TableHead className="font-semibold text-center">
+              <TableHead className="font-medium text-[#425466] text-[13px] text-center py-3">
                 Crypto
               </TableHead>
-              <TableHead className="font-semibold text-center">
+              <TableHead className="font-medium text-[#425466] text-[13px] text-center py-3">
                 Local Inst.
               </TableHead>
-              <TableHead className="font-semibold">Countries</TableHead>
-              <TableHead className="font-semibold">Payment methods</TableHead>
-              <TableHead className="font-semibold">PM</TableHead>
+              <TableHead className="font-medium text-[#425466] text-[13px] py-3">
+                Countries
+              </TableHead>
+              <TableHead className="font-medium text-[#425466] text-[13px] py-3">
+                Payment methods
+              </TableHead>
+              <TableHead className="font-medium text-[#425466] text-[13px] py-3">
+                PM
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -367,7 +388,7 @@ export function PaymentProcessorsTable({
               <TableRow>
                 <TableCell
                   colSpan={10}
-                  className="h-32 text-center text-muted-foreground"
+                  className="h-32 text-center text-[#8898aa]"
                 >
                   No processors found. Try adjusting your search or filters.
                 </TableCell>
