@@ -527,7 +527,7 @@ const merchants = [
   {
     id: "acmecorp",
     name: "Acme Corp",
-    contact_email: "maria.garcia@acmecorp.com",
+    contact_email: "jarchilac@unal.edu.co",
     contact_name: "María García",
     lifecycle_stage: "SCOPING" as const,
     sales_owner: "Juan Pérez",

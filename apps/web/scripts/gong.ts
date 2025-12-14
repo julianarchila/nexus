@@ -27,14 +27,14 @@ const db = drizzle({
 });
 
 // Test merchant contact email (must match seed.ts)
-const TEST_MERCHANT_EMAIL = "maria.garcia@acmecorp.com";
+const TEST_MERCHANT_EMAIL = "jarchilac@unal.edu.co";
 
 // Gong webhook party structure
 const parties = [
   {
     id: "7409609343412403343",
     emailAddress: TEST_MERCHANT_EMAIL,
-    name: "María García",
+    name: "Pepito Perez",
     title: "VP of Payments",
     affiliation: "External",
     methods: ["Invitee", "Attendee"],
@@ -70,7 +70,7 @@ const event1_discovery = {
     language: "eng",
   },
   parties,
-  meetingSummary: `Discovery call between Yuno and Acme Corp. María García (VP of Payments) explained that Acme Corp is an e-commerce platform operating primarily in Brazil and Mexico. They currently process around $8 million in monthly transactions using credit cards as their main payment method.
+  meetingSummary: `Discovery call between Yuno and Acme Corp. Pepito Perez(VP of Payments) explained that Acme Corp is an e-commerce platform operating primarily in Brazil and Mexico. They currently process around $8 million in monthly transactions using credit cards as their main payment method.
 
 María mentioned they're experiencing approval rates around 85% which they feel is too low compared to industry standards. She expressed interest in understanding how Yuno could help improve their payment success rates.
 
