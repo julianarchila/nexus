@@ -34,8 +34,8 @@ export default function RootLayout({
       >
         <SidebarProvider>
           <AppSidebar />
-          <main>
-            <SidebarTrigger />
+          <SidebarTrigger className="fixed top-4 left-4 z-50 transition-all duration-200 peer-data-[state=expanded]:left-[calc(var(--sidebar-width)+1rem)]" />
+          <main className="flex-1 w-full">
             <TRPCReactProvider>
               {children}
               <TanStackDevtools

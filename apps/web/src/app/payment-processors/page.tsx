@@ -26,7 +26,7 @@ export default async function Home() {
     }
 
     return (
-        <div className="w-full flex ">
+        <div className="w-full flex mt-4">
             <div className="min-h-screen bg-white p-6 w-full flex items-center justify-center">
                 <div className="max-w-7xl w-full space-y-6">
                     <header>
