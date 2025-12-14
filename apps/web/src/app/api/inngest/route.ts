@@ -1,12 +1,13 @@
-import { inngest } from "@/lib/inngest";
-import { serve } from "inngest/next";
 import {
-  gongAdapter,
+  applyExtraction,
+  generateEventEmbedding,
   gmailAdapter,
   gmailComposioAdapter,
+  gongAdapter,
   processEvent,
-  applyExtraction,
 } from "@/core/workflows";
+import { inngest } from "@/lib/inngest";
+import { serve } from "inngest/next";
 
 export const { GET, POST, PUT } = serve({
   client: inngest,
@@ -16,5 +17,6 @@ export const { GET, POST, PUT } = serve({
     gmailComposioAdapter,
     processEvent,
     applyExtraction,
+    generateEventEmbedding,
   ],
 });

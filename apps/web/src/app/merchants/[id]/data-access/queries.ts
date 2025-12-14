@@ -60,6 +60,26 @@ export function useEventsQueryOptions(merchantId: string) {
   };
 }
 
+/**
+ * Query options for semantic search
+ * Pattern 3: Server-side semantic search
+ */
+export function useEventSearchQueryOptions(merchantId: string, query: string) {
+  const trpc = useTRPC();
+
+  return {
+    search: trpc.inboundEvents.search.queryOptions(
+      {
+        merchantId,
+        query,
+      },
+      {
+        enabled: query.trim().length > 0,
+      },
+    ),
+  };
+}
+
 // 5 minutes for merchant data
 export const MERCHANT_STALE_TIME = 1000 * 60 * 5;
 

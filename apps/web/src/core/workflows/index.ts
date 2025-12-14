@@ -5,8 +5,9 @@
  * These workflows orchestrate the data pipeline: ingestion → extraction → application.
  */
 
-export { gmailAdapter } from "./adapters/gmail.adapter";
 export { gmailComposioAdapter } from "./adapters/gmail-composio.adapter";
+export { gmailAdapter } from "./adapters/gmail.adapter";
 export { gongAdapter } from "./adapters/gong.adapter";
-export { processEvent } from "./process-event";
 export { applyExtraction } from "./apply-extraction";
+export { generateEventEmbedding } from "./generate-embedding";
+export { processEvent } from "./process-event";

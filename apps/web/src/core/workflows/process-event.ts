@@ -136,6 +136,14 @@ export const processEvent = inngest.createFunction(
       });
     }
 
+    // Step 8: Emit embedding/generate event for semantic search
+    await step.sendEvent("emit-embedding-generate", {
+      name: "embedding/generate",
+      data: {
+        inboundEventId,
+      },
+    });
+
     return {
       success: true,
       inboundEventId,

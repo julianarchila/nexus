@@ -1,6 +1,7 @@
 import { relations } from "drizzle-orm";
 import {
   boolean,
+  customType,
   index,
   integer,
   jsonb,
@@ -8,6 +9,30 @@ import {
   text,
   timestamp,
 } from "drizzle-orm/pg-core";
+
+// ===========================================
+// CUSTOM TYPES
+// ===========================================
+
+/**
+ * Custom pgvector type for storing embeddings
+ * Dimension is set to 768 for Gemini embedding model
+ */
+const vector = customType<{ data: number[]; driverData: string }>({
+  dataType() {
+    return "vector(768)";
+  },
+  toDriver(value: number[]): string {
+    return `[${value.join(",")}]`;
+  },
+  fromDriver(value: string): number[] {
+    // pgvector returns format: [0.1,0.2,0.3,...]
+    return value
+      .slice(1, -1)
+      .split(",")
+      .map((v) => Number.parseFloat(v));
+  },
+});
 
 // ===========================================
 // TYPES
@@ -220,6 +245,9 @@ export const inboundEvent = pgTable(
       .notNull()
       .default("PENDING"),
     processed_at: timestamp("processed_at"),
+
+    // Semantic search embedding (768 dimensions for Gemini)
+    embedding: vector("embedding"),
 
     created_at: timestamp("created_at").defaultNow().notNull(),
   },
