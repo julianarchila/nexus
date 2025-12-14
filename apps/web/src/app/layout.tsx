@@ -1,11 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-<<<<<<< HEAD
 import { TRPCReactProvider } from "@/lib/trpc/client";
-=======
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/app-sidebar";
->>>>>>> 65b830b (feat: add UI components for separator, sheet, sidebar, skeleton, sonner, table, tabs, and tooltip)
 import "./globals.css";
 import { TanStackDevtools } from "@tanstack/react-devtools";
 import { ReactQueryDevtoolsPanel } from "@tanstack/react-query-devtools";
