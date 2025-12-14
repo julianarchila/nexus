@@ -33,9 +33,8 @@ export default function RootLayout({
         suppressHydrationWarning
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <SidebarProvider>
+        <SidebarProvider open={false}>
           <AppSidebar />
-          <SidebarTrigger className="fixed top-4 left-4 z-50 transition-all duration-200 peer-data-[state=expanded]:left-[calc(var(--sidebar-width)+1rem)]" />
           <main className="flex-1 w-full">
             <TRPCReactProvider>
               {children}

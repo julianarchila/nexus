@@ -14,6 +14,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
   Table,
   TableBody,
   TableCell,
@@ -33,7 +38,7 @@ import type {
 
 // ----- Presentation Helpers -----
 
-function renderBadges(items: string[], max = 3) {
+function BadgesWithPopover({ items, max = 3 }: { items: string[]; max?: number }) {
   if (items.length === 0) {
     return <span className="text-[#8898aa]">—</span>;
   }
@@ -49,9 +54,34 @@ function renderBadges(items: string[], max = 3) {
         </Badge>
       ))}
       {remaining > 0 && (
-        <Badge variant="outline" className="text-xs font-normal">
-          +{remaining}
-        </Badge>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Badge
+              variant="outline"
+              className="text-xs font-normal cursor-pointer hover:bg-slate-100 transition-colors"
+            >
+              +{remaining}
+            </Badge>
+          </PopoverTrigger>
+          <PopoverContent className="w-72 p-3" align="start">
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-slate-500 mb-2">
+                All items ({items.length})
+              </p>
+              <div className="max-h-[300px] overflow-y-auto space-y-1.5">
+                {items.map((item, index) => (
+                  <Badge 
+                    key={index} 
+                    variant="secondary" 
+                    className="text-xs font-normal mr-1 mb-1"
+                  >
+                    {item}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          </PopoverContent>
+        </Popover>
       )}
     </div>
   );
@@ -63,12 +93,12 @@ function getStatusBadge(status: string) {
     {
       label: string;
       variant:
-        | "default"
-        | "secondary"
-        | "destructive"
-        | "outline"
-        | "success"
-        | "warning";
+      | "default"
+      | "secondary"
+      | "destructive"
+      | "outline"
+      | "success"
+      | "warning";
     }
   > = {
     NOT_SUPPORTED: { label: "Not Supported", variant: "secondary" },
@@ -294,8 +324,12 @@ function ProcessorRow({ processor, derived }: ProcessorRowProps) {
       <TableCell className="text-center py-4">
         <CapabilityCell enabled={!!derived?.supports_local_instruments} />
       </TableCell>
-      <TableCell className="py-4">{renderBadges(countries, 3)}</TableCell>
-      <TableCell className="py-4">{renderBadges(methods, 3)}</TableCell>
+      <TableCell className="py-4">
+        <BadgesWithPopover items={countries} max={3} />
+      </TableCell>
+      <TableCell className="py-4">
+        <BadgesWithPopover items={methods} max={3} />
+      </TableCell>
       <TableCell className="text-[#8898aa] text-[14px] py-4">
         {processor.product_manager || "—"}
       </TableCell>

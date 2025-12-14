@@ -24,16 +24,6 @@ const items = [
     url: "/payment-processors",
     icon: CreditCard,
   },
-  {
-    title: "Fraud Screening",
-    url: "#",
-    icon: Shield,
-  },
-  {
-    title: "Settings",
-    url: "#",
-    icon: Settings,
-  },
 ];
 
 export function AppSidebar() {
