@@ -437,6 +437,19 @@ export const appRouter = router({
 
         return attachments;
       }),
+
+    /**
+     * Delete an attachment by ID
+     */
+    delete: publicProcedure
+      .input(z.object({ attachmentId: z.string() }))
+      .mutation(async ({ input }) => {
+        await db
+          .delete(attachment)
+          .where(eq(attachment.id, input.attachmentId));
+
+        return { success: true };
+      }),
   }),
 
   // ===========================================

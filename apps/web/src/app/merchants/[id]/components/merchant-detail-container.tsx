@@ -8,7 +8,6 @@ import {
   CheckCircle2,
   FileText,
   Mail,
-  MoreVertical,
   User,
 } from "lucide-react";
 import Link from "next/link";
@@ -26,6 +25,7 @@ import type { LifecycleStage } from "@/core/db/schema";
 
 import { useMerchantDetail } from "../hooks/use-merchant-detail";
 import { ActivityLogPanel } from "./activity-log-panel";
+import { DocumentsPanel } from "./documents-panel";
 import { MerchantDetailLoader } from "./merchant-detail-loader";
 
 // Lifecycle stage styles
@@ -291,45 +291,7 @@ export function MerchantDetailContainer({
           value="documents"
           className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300"
         >
-          {attachments.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {attachments.map((doc) => (
-                <div
-                  key={doc.id}
-                  className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-all cursor-pointer group"
-                >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="h-10 w-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
-                      <FileText className="h-5 w-5" />
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-slate-400 group-hover:text-slate-600"
-                    >
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <h4 className="font-medium text-slate-900 truncate mb-1">
-                    {doc.filename}
-                  </h4>
-                  <div className="flex items-center gap-2 text-xs text-slate-500">
-                    <span className="bg-slate-100 px-2 py-0.5 rounded-md text-slate-600">
-                      {doc.category || doc.file_type}
-                    </span>
-                    <span>•</span>
-                    <span>{formatFileSize(doc.file_size)}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="bg-white rounded-xl border border-gray-100 p-8 text-center">
-              <FileText className="h-12 w-12 text-slate-300 mx-auto mb-4" />
-              <p className="text-slate-500">No documents uploaded yet</p>
-            </div>
-          )}
+          <DocumentsPanel merchantId={merchantId} attachments={attachments} />
         </TabsContent>
 
         {/* Activity Tab */}
@@ -351,10 +313,4 @@ export function MerchantDetailContainer({
       />
     </div>
   );
-}
-
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
