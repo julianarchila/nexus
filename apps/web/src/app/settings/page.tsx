@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -10,7 +10,9 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover";
-import { Mail, MessageCircle, Slack, CheckCircle, ArrowUpRight, Info } from "lucide-react";
+import { Mail, MessageCircle, Slack, CheckCircle, ArrowUpRight, Info, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface Integration {
     id: string;
@@ -19,7 +21,12 @@ interface Integration {
     icon: React.ElementType;
     connected: boolean;
     reminders: boolean;
+    accountId?: string;
+    accountEmail?: string;
 }
+
+// User ID for Composio - in production, this should come from your auth system
+const CURRENT_USER_ID = "default-user";
 
 export default function SettingsPage() {
     const [integrations, setIntegrations] = useState<Integration[]>([
@@ -36,8 +43,8 @@ export default function SettingsPage() {
             name: "Gmail",
             description: "Conecta tu correo para centralizar comunicaciones importantes",
             icon: Mail,
-            connected: true,
-            reminders: true,
+            connected: false,
+            reminders: false,
         },
         {
             id: "whatsapp",
@@ -48,25 +55,125 @@ export default function SettingsPage() {
             reminders: false,
         },
     ]);
+    const [loading, setLoading] = useState<string | null>(null);
+    const [initialLoading, setInitialLoading] = useState(true);
 
-    const handleConnect = (id: string) => {
-        setIntegrations((prev) =>
-            prev.map((integration) =>
-                integration.id === id
-                    ? { ...integration, connected: !integration.connected }
-                    : integration
-            )
-        );
+    // Check Gmail connection status on mount
+    useEffect(() => {
+        checkGmailConnection();
+    }, []);
+
+    const checkGmailConnection = async () => {
+        try {
+            const response = await fetch(`/api/composio/connect-gmail?userId=${CURRENT_USER_ID}`);
+            const data = await response.json();
+
+            if (data.connected) {
+                setIntegrations((prev) =>
+                    prev.map((integration) =>
+                        integration.id === "gmail"
+                            ? {
+                                ...integration,
+                                connected: true,
+                                reminders: data.hasReminders,
+                                accountId: data.accountId,
+                                accountEmail: data.accountEmail,
+                            }
+                            : integration
+                    )
+                );
+            }
+        } catch (error) {
+            console.error("Error checking Gmail connection:", error);
+        } finally {
+            setInitialLoading(false);
+        }
     };
 
-    const handleRemindersToggle = (id: string) => {
-        setIntegrations((prev) =>
-            prev.map((integration) =>
-                integration.id === id
-                    ? { ...integration, reminders: !integration.reminders }
-                    : integration
-            )
-        );
+    const handleConnect = async (id: string) => {
+        if (id !== "gmail") {
+            // For other integrations, show "coming soon"
+            return;
+        }
+
+        setLoading(id);
+        try {
+            const response = await fetch("/api/composio/connect-gmail", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    userId: CURRENT_USER_ID,
+                    callbackUrl: `${window.location.origin}/settings?connected=gmail`,
+                }),
+            });
+
+            const data = await response.json();
+
+            if (data.success && data.redirectUrl) {
+                // Redirect to Composio OAuth flow
+                window.location.href = data.redirectUrl;
+            } else {
+                throw new Error(data.error || "Failed to initiate connection");
+            }
+        } catch (error: any) {
+            console.error("Error connecting Gmail:", error);
+            toast.error(error.message || "Error al conectar Gmail");
+        } finally {
+            setLoading(null);
+        }
+    };
+
+    const handleRemindersToggle = async (id: string) => {
+        const integration = integrations.find((i) => i.id === id);
+        if (!integration) return;
+
+        setLoading(id);
+        try {
+            if (id === "gmail") {
+                if (!integration.reminders) {
+                    // Enable trigger
+                    const response = await fetch("/api/composio/setup-trigger", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            connectedAccountId: integration.accountId,
+                        }),
+                    });
+
+                    const data = await response.json();
+                    if (!data.success) {
+                        throw new Error(data.error || "Failed to enable trigger");
+                    }
+
+                    toast.success("Recordatorios de Gmail activados");
+                } else {
+                    // Disable trigger
+                    const response = await fetch(
+                        `/api/composio/setup-trigger?connectedAccountId=${integration.accountId}`,
+                        { method: "DELETE" }
+                    );
+
+                    const data = await response.json();
+                    if (!data.success) {
+                        throw new Error(data.error || "Failed to disable trigger");
+                    }
+
+                    toast.success("Recordatorios de Gmail desactivados");
+                }
+
+                // Update state
+                setIntegrations((prev) =>
+                    prev.map((i) =>
+                        i.id === id ? { ...i, reminders: !i.reminders } : i
+                    )
+                );
+            }
+        } catch (error: any) {
+            console.error("Error toggling reminders:", error);
+            toast.error(error.message || "Error al cambiar recordatorios");
+        } finally {
+            setLoading(null);
+        }
     };
 
     return (
@@ -79,8 +186,28 @@ export default function SettingsPage() {
                     </p>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {integrations.map((integration) => {
+                {initialLoading ? (
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        {[1, 2, 3].map((i) => (
+                            <Card key={i} className="border-2">
+                                <CardHeader>
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center space-x-3 flex-1">
+                                            <Skeleton className="h-10 w-10 rounded-lg" />
+                                            <div className="flex-1 space-y-2">
+                                                <Skeleton className="h-4 w-20" />
+                                                <Skeleton className="h-3 w-full" />
+                                            </div>
+                                        </div>
+                                        <Skeleton className="h-8 w-20" />
+                                    </div>
+                                </CardHeader>
+                            </Card>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        {integrations.map((integration) => {
                         const Icon = integration.icon;
                         return (
                             <Card
@@ -138,9 +265,19 @@ export default function SettingsPage() {
                                                 variant="secondary"
                                                 className="cursor-pointer opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity flex items-center space-x-1"
                                                 onClick={() => handleConnect(integration.id)}
+                                                disabled={loading === integration.id}
                                             >
-                                                <span>Conectar</span>
-                                                <ArrowUpRight className="h-3 w-3" />
+                                                {loading === integration.id ? (
+                                                    <>
+                                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                                        <span>Conectando...</span>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <span>Conectar</span>
+                                                        <ArrowUpRight className="h-3 w-3" />
+                                                    </>
+                                                )}
                                             </Button>
                                         )}
                                     </div>
@@ -154,40 +291,37 @@ export default function SettingsPage() {
                                                             htmlFor={`reminders-${integration.id}`}
                                                             className="text-sm font-medium cursor-help"
                                                         >
-                                                            Recordatorios
+                                                            Recordatorios automáticos
                                                         </Label>
                                                         <Info className="h-3 w-3 text-muted-foreground" />
                                                     </div>
                                                 </PopoverTrigger>
                                                 <PopoverContent className="w-64 text-sm">
                                                     <p className="text-muted-foreground">
-                                                        Activa esta opción para recibir notificaciones y recordatorios importantes directamente en {integration.name}.
+                                                        Activa esta opción para procesar automáticamente nuevos mensajes de Gmail y extraer información relevante para los merchants.
                                                     </p>
                                                 </PopoverContent>
                                             </Popover>
-                                            <Popover>
-                                                <PopoverTrigger asChild>
-                                                    <div>
-                                                        <Switch
-                                                            id={`reminders-${integration.id}`}
-                                                            checked={integration.reminders}
-                                                            onCheckedChange={() => handleRemindersToggle(integration.id)}
-                                                        />
-                                                    </div>
-                                                </PopoverTrigger>
-                                                <PopoverContent className="w-64 text-sm">
-                                                    <p className="text-muted-foreground">
-                                                        Activa esta opción para recibir notificaciones y recordatorios importantes directamente en {integration.name}.
-                                                    </p>
-                                                </PopoverContent>
-                                            </Popover>
+                                            <Switch
+                                                id={`reminders-${integration.id}`}
+                                                checked={integration.reminders}
+                                                onCheckedChange={() => handleRemindersToggle(integration.id)}
+                                                disabled={loading === integration.id}
+                                            />
                                         </div>
+                                    )}
+
+                                    {integration.connected && integration.accountEmail && (
+                                        <p className="text-xs text-muted-foreground mt-2">
+                                            Cuenta: {integration.accountEmail}
+                                        </p>
                                     )}
                                 </CardHeader>
                             </Card>
                         );
                     })}
-                </div>
+                    </div>
+                )}
             </div>
         </div>
     );
