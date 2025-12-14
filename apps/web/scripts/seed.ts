@@ -1,8 +1,11 @@
 import "dotenv/config";
 import { db } from "../src/core/db/client";
+import { eq } from "drizzle-orm";
 import {
   paymentProcessors,
   countryProcessorFeatures,
+  merchant_profile,
+  scope_in_doc_info,
 } from "../src/core/db/schema";
 
 // Datos realistas de procesadores de pago principales en LATAM
@@ -500,6 +503,99 @@ async function seed() {
         .onConflictDoNothing();
     }
     console.log(`✅ Inserted ${countryFeatures.length} country features`);
+
+    // Insertar Merchants Enterprise (Rappi, McDonalds, Avianca)
+    const merchants = [
+      {
+        name: "Rappi",
+        contact_email: "payments@rappi.com",
+        status: "active",
+        scope: {
+          integrations: {
+            psps: ["stripe", "adyen", "mercadopago"],
+            countries: ["MX", "CO", "BR", "PE"],
+            paymentMethods: ["credit_card", "debit_card", "pix", "spei", "pse"],
+          },
+          volume_metrics: "$250M USD",
+          aproval_rate: "92.5%",
+          comes_from_mof: false,
+          deal_closed_by: "Juan Pérez",
+        },
+      },
+      {
+        name: "McDonalds",
+        contact_email: "finance@mcdonalds.com",
+        status: "active",
+        scope: {
+          integrations: {
+            psps: ["adyen", "worldpay"],
+            countries: ["BR", "MX", "CO"],
+            paymentMethods: ["credit_card", "debit_card"],
+          },
+          volume_metrics: "$45M USD",
+          aproval_rate: "95.2%",
+          comes_from_mof: true,
+          deal_closed_by: "Global Accounts Team",
+        },
+      },
+      {
+        name: "Avianca",
+        contact_email: "pagos@avianca.com",
+        status: "active",
+        scope: {
+          integrations: {
+            psps: ["dlocal", "stripe", "cybersource"],
+            countries: ["CO", "US", "ES"],
+            paymentMethods: ["credit_card", "pse", "fly_now_pay_later"],
+          },
+          volume_metrics: "$120M USD",
+          aproval_rate: "88.7%",
+          comes_from_mof: false,
+          deal_closed_by: "Maria Rodriguez",
+        },
+      },
+    ];
+
+    console.log("🏪 Inserting enterprise merchants...");
+
+    for (const m of merchants) {
+      const merchant = await db
+        .insert(merchant_profile)
+        .values({
+          name: m.name,
+          contact_email: m.contact_email,
+          status: m.status,
+        })
+        .returning()
+        .onConflictDoNothing();
+
+      let merchantId: number | undefined;
+      if (merchant.length > 0) {
+        merchantId = merchant[0].id;
+      } else {
+        const existing = await db
+          .select()
+          .from(merchant_profile)
+          .where(eq(merchant_profile.contact_email, m.contact_email))
+          .limit(1);
+        merchantId = existing[0]?.id;
+      }
+
+      if (merchantId) {
+        await db
+          .insert(scope_in_doc_info)
+          .values({
+            merchant_profile_id: merchantId,
+            integrations: m.scope.integrations,
+            volume_metrics: m.scope.volume_metrics,
+            aproval_rate: m.scope.aproval_rate,
+            comes_from_mof: m.scope.comes_from_mof,
+            deal_closed_by: m.scope.deal_closed_by,
+          })
+          .onConflictDoNothing();
+        console.log(`✅ Seeded ${m.name}`);
+      }
+    }
 
     console.log("🎉 Database seeded successfully!");
     console.log("\n📊 Summary:");

@@ -8,6 +8,7 @@ import {
   scope_in_doc_info,
 } from "@/core/db/schema";
 import { publicProcedure, router } from "./init";
+import { z } from "zod";
 
 // Test merchant email (must match seed.ts and mong.ts)
 const TEST_MERCHANT_EMAIL = "maria.garcia@acmecorp.com";
@@ -26,6 +27,26 @@ export const appRouter = router({
     list: publicProcedure.query(async () => {
       const merchants = await db.select().from(merchant_profile);
       return merchants;
+    }),
+    getById: publicProcedure.input(z.number()).query(async ({ input }) => {
+      const merchant = await db
+        .select()
+        .from(merchant_profile)
+        .where(eq(merchant_profile.id, input))
+        .limit(1);
+
+      if (merchant.length === 0) return null;
+
+      const scope = await db
+        .select()
+        .from(scope_in_doc_info)
+        .where(eq(scope_in_doc_info.merchant_profile_id, input))
+        .limit(1);
+
+      return {
+        merchant: merchant[0],
+        scope: scope[0] ?? null,
+      };
     }),
   }),
   debug: router({

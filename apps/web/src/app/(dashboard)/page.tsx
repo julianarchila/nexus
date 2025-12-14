@@ -1,7 +1,34 @@
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
+import { MerchantsTable } from "@/components/merchants-table";
+
 export default function Home() {
   return (
-    <div className="p-8">
-      <h1 className="text-4xl font-bold">Merchants</h1>
+    <div className="p-8 max-w-[1600px] mx-auto space-y-8">
+      {/* Header */}
+      <div className="flex items-end justify-between border-b border-slate-200 pb-4">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 text-sm text-slate-500 mb-2">
+            <span>Workspace</span>
+            <span>/</span>
+            <span>Commercial</span>
+          </div>
+          <h1 className="text-4xl font-bold text-slate-900 tracking-tight flex items-center gap-3">
+            Merchants (Accounts)
+            <span className="text-lg font-normal text-slate-400 mt-2">
+              All View
+            </span>
+          </h1>
+        </div>
+        
+        <Button className="bg-blue-600 hover:bg-blue-700 text-white rounded-md px-4 h-9 shadow-sm transition-all hover:shadow">
+          <Plus className="mr-2 h-4 w-4" />
+          New
+        </Button>
+      </div>
+
+      {/* Main Content */}
+      <MerchantsTable />
     </div>
   );
 }
