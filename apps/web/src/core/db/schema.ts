@@ -14,7 +14,7 @@ import {
 // ===========================================
 
 export type LifecycleStage = "SCOPING" | "IMPLEMENTING" | "LIVE";
-export type FieldStatus = "COMPLETE" | "PARTIAL" | "MISSING";
+export type FieldStatus = "COMPLETE" | "MISSING";
 export type SourceType =
   | "MEETING"
   | "EMAIL"
@@ -36,6 +36,35 @@ export type ExtractionStatus =
 export type ActorType = "AI" | "USER" | "SYSTEM";
 export type ChangeType = "CREATE" | "UPDATE" | "STAGE_CHANGE";
 export type AttachmentCategory = "CONTRACT" | "TECHNICAL_DOC" | "OTHER";
+export type ImplementationStatus =
+  | "PENDING"
+  | "IN_PROGRESS"
+  | "LIVE"
+  | "BLOCKED"
+  | "NOT_REQUIRED";
+export type TransitionStatus = "APPROVED" | "REJECTED";
+
+// Types for stage transition JSONB fields
+export interface ScopeSnapshot {
+  psps: string[];
+  countries: string[];
+  payment_methods: string[];
+  expected_volume: string | null;
+  expected_approval_rate: string | null;
+  restrictions: string[];
+  dependencies: string[];
+  compliance_requirements: string[];
+  expected_go_live_date: string | null;
+  comes_from_mor: boolean;
+  deal_closed_by: string | null;
+}
+
+export interface TransitionWarning {
+  type: "PSP_NOT_SUPPORTED" | "PAYMENT_METHOD_NOT_SUPPORTED";
+  processor_id?: string;
+  payment_method?: string;
+  message: string;
+}
 
 // ===========================================
 // 1. MERCHANT PROFILE
@@ -385,6 +414,138 @@ export const countryProcessorFeatures = pgTable("country_processor_features", {
 });
 
 // ===========================================
+// 9. MERCHANT PSP IMPLEMENTATION
+// ===========================================
+
+export const merchantPspImplementation = pgTable(
+  "merchant_psp_implementation",
+  {
+    id: text("id").primaryKey(),
+    merchant_id: text("merchant_id")
+      .notNull()
+      .references(() => merchantProfile.id),
+
+    // What PSP is being implemented
+    processor_id: text("processor_id").notNull(), // Reference to paymentProcessors.id or string ID if not yet in platform
+
+    // Status tracking
+    status: text("status")
+      .$type<ImplementationStatus>()
+      .notNull()
+      .default("PENDING"),
+    blocked_reason: text("blocked_reason"), // If BLOCKED
+    not_required_reason: text("not_required_reason"), // If NOT_REQUIRED
+
+    // Platform support at time of creation
+    platform_supported: boolean("platform_supported").notNull(), // Was this PSP supported when scope was approved?
+
+    // Tracking
+    started_at: timestamp("started_at"),
+    completed_at: timestamp("completed_at"),
+
+    created_at: timestamp("created_at").defaultNow().notNull(),
+    updated_at: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    merchantIdIdx: index("merchant_psp_impl_merchant_id_idx").on(
+      table.merchant_id,
+    ),
+    statusIdx: index("merchant_psp_impl_status_idx").on(table.status),
+    processorIdIdx: index("merchant_psp_impl_processor_id_idx").on(
+      table.processor_id,
+    ),
+  }),
+);
+
+// ===========================================
+// 10. MERCHANT PAYMENT METHOD IMPLEMENTATION
+// ===========================================
+
+export const merchantPaymentMethodImplementation = pgTable(
+  "merchant_payment_method_implementation",
+  {
+    id: text("id").primaryKey(),
+    merchant_id: text("merchant_id")
+      .notNull()
+      .references(() => merchantProfile.id),
+
+    // What payment method is being implemented
+    payment_method: text("payment_method").notNull(),
+
+    // Status tracking
+    status: text("status")
+      .$type<ImplementationStatus>()
+      .notNull()
+      .default("PENDING"),
+    blocked_reason: text("blocked_reason"), // If BLOCKED
+    not_required_reason: text("not_required_reason"), // If NOT_REQUIRED
+
+    // Platform support at time of creation
+    platform_supported: boolean("platform_supported").notNull(), // Was this payment method supported when scope was approved?
+
+    // Tracking
+    started_at: timestamp("started_at"),
+    completed_at: timestamp("completed_at"),
+
+    created_at: timestamp("created_at").defaultNow().notNull(),
+    updated_at: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    merchantIdIdx: index("merchant_pm_impl_merchant_id_idx").on(
+      table.merchant_id,
+    ),
+    statusIdx: index("merchant_pm_impl_status_idx").on(table.status),
+    paymentMethodIdx: index("merchant_pm_impl_payment_method_idx").on(
+      table.payment_method,
+    ),
+  }),
+);
+
+// ===========================================
+// 11. STAGE TRANSITION
+// ===========================================
+
+export const stageTransition = pgTable(
+  "stage_transition",
+  {
+    id: text("id").primaryKey(),
+    merchant_id: text("merchant_id")
+      .notNull()
+      .references(() => merchantProfile.id),
+
+    // Transition details
+    from_stage: text("from_stage").$type<LifecycleStage>().notNull(),
+    to_stage: text("to_stage").$type<LifecycleStage>().notNull(),
+    status: text("status").$type<TransitionStatus>().notNull(),
+
+    // Who and when
+    transitioned_by: text("transitioned_by").notNull(), // User ID
+
+    // Scope snapshot (frozen at transition time for SCOPING → IMPLEMENTING)
+    scope_snapshot: jsonb("scope_snapshot").$type<ScopeSnapshot>(),
+
+    // User feedback during transition
+    user_feedback: text("user_feedback"),
+
+    // Warnings that were acknowledged (for SCOPING → IMPLEMENTING)
+    warnings_acknowledged: jsonb("warnings_acknowledged")
+      .$type<TransitionWarning[]>()
+      .default([]),
+
+    // For rejections
+    rejection_reason: text("rejection_reason"),
+
+    created_at: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    merchantIdIdx: index("stage_transition_merchant_id_idx").on(
+      table.merchant_id,
+    ),
+    createdAtIdx: index("stage_transition_created_at_idx").on(table.created_at),
+  }),
+);
+
+// ===========================================
 // RELATIONS
 // ===========================================
 
@@ -399,6 +560,9 @@ export const merchantProfileRelations = relations(
     aiExtractions: many(aiExtraction),
     auditLogs: many(auditLog),
     attachments: many(attachment),
+    pspImplementations: many(merchantPspImplementation),
+    paymentMethodImplementations: many(merchantPaymentMethodImplementation),
+    stageTransitions: many(stageTransition),
   }),
 );
 
@@ -462,6 +626,36 @@ export const countryProcessorFeaturesRelations = relations(
     processor: one(paymentProcessors, {
       fields: [countryProcessorFeatures.processor_id],
       references: [paymentProcessors.id],
+    }),
+  }),
+);
+
+export const merchantPspImplementationRelations = relations(
+  merchantPspImplementation,
+  ({ one }) => ({
+    merchant: one(merchantProfile, {
+      fields: [merchantPspImplementation.merchant_id],
+      references: [merchantProfile.id],
+    }),
+  }),
+);
+
+export const merchantPaymentMethodImplementationRelations = relations(
+  merchantPaymentMethodImplementation,
+  ({ one }) => ({
+    merchant: one(merchantProfile, {
+      fields: [merchantPaymentMethodImplementation.merchant_id],
+      references: [merchantProfile.id],
+    }),
+  }),
+);
+
+export const stageTransitionRelations = relations(
+  stageTransition,
+  ({ one }) => ({
+    merchant: one(merchantProfile, {
+      fields: [stageTransition.merchant_id],
+      references: [merchantProfile.id],
     }),
   }),
 );

@@ -1,14 +1,14 @@
 import "dotenv/config";
 import { db } from "../src/core/db/client";
 import {
-  paymentProcessors,
-  countryProcessorFeatures,
-  merchantProfile,
-  scopeInDoc,
-  inboundEvent,
   aiExtraction,
-  auditLog,
   attachment,
+  auditLog,
+  countryProcessorFeatures,
+  inboundEvent,
+  merchantProfile,
+  paymentProcessors,
+  scopeInDoc,
 } from "../src/core/db/schema";
 
 // Datos realistas de procesadores de pago principales en LATAM
@@ -498,19 +498,19 @@ const merchants = [
     implementation_owner: "Carlos Ramírez",
   },
   {
-    id: "nubank",
-    name: "Nubank",
-    contact_email: "integrations@nubank.com.br",
-    contact_name: "Cristina Junqueira",
+    id: "indrive",
+    name: "inDrive",
+    contact_email: "payments@indrive.com",
+    contact_name: "Arsen Tomsky",
     lifecycle_stage: "IMPLEMENTING" as const,
     sales_owner: "Ana Silva",
     implementation_owner: "Diego Fernández",
   },
   {
-    id: "mercadolibre",
-    name: "Mercado Libre",
-    contact_email: "payments-eng@mercadolibre.com",
-    contact_name: "Marcos Galperin",
+    id: "uber",
+    name: "Uber",
+    contact_email: "latam-payments@uber.com",
+    contact_name: "Daniel Wilf",
     lifecycle_stage: "SCOPING" as const,
     sales_owner: "Roberto Mendoza",
     implementation_owner: null,
@@ -553,23 +553,26 @@ const scopes = [
     is_complete: true,
   },
   {
-    id: "nubank_scope",
-    merchant_id: "nubank",
-    psps: ["stripe", "pagseguro"],
+    id: "indrive_scope",
+    merchant_id: "indrive",
+    psps: ["stripe", "dlocal", "mercadopago"],
     psps_status: "COMPLETE" as const,
-    countries: ["BR", "MX"],
+    countries: ["BR", "MX", "CO", "PE"],
     countries_status: "COMPLETE" as const,
-    payment_methods: ["credit_card", "pix", "boleto_bancario"],
-    payment_methods_status: "PARTIAL" as const,
-    expected_volume: "$120M USD/month",
+    payment_methods: ["credit_card", "pix", "oxxo", "yape"],
+    payment_methods_status: "COMPLETE" as const,
+    expected_volume: "$35M USD/month",
     expected_volume_status: "COMPLETE" as const,
-    expected_approval_rate: "90%",
+    expected_approval_rate: "88%",
     expected_approval_rate_status: "COMPLETE" as const,
-    restrictions: ["Brazil-first focus", "Real-time settlement required"],
+    restrictions: [
+      "Driver payouts required",
+      "Real-time settlement for drivers",
+    ],
     restrictions_status: "COMPLETE" as const,
-    dependencies: ["Open Banking integration", "PIX QR Code support"],
-    dependencies_status: "PARTIAL" as const,
-    compliance_requirements: ["PCI-DSS", "LGPD", "BACEN regulations"],
+    dependencies: ["Driver payout system", "Fraud scoring integration"],
+    dependencies_status: "COMPLETE" as const,
+    compliance_requirements: ["PCI-DSS", "LGPD", "Local labor regulations"],
     compliance_status: "COMPLETE" as const,
     expected_go_live_date: new Date("2025-06-01"),
     go_live_date_status: "COMPLETE" as const,
@@ -578,14 +581,14 @@ const scopes = [
     is_complete: false,
   },
   {
-    id: "mercadolibre_scope",
-    merchant_id: "mercadolibre",
-    psps: ["mercadopago", "adyen"],
-    psps_status: "PARTIAL" as const,
+    id: "uber_scope",
+    merchant_id: "uber",
+    psps: ["adyen", "stripe"],
+    psps_status: "COMPLETE" as const,
     countries: ["BR", "MX", "AR", "CO", "CL"],
     countries_status: "COMPLETE" as const,
-    payment_methods: ["credit_card", "mercado_credito"],
-    payment_methods_status: "PARTIAL" as const,
+    payment_methods: ["credit_card", "debit_card", "pix"],
+    payment_methods_status: "COMPLETE" as const,
     expected_volume: null,
     expected_volume_status: "MISSING" as const,
     expected_approval_rate: null,
@@ -595,7 +598,7 @@ const scopes = [
     dependencies: [],
     dependencies_status: "MISSING" as const,
     compliance_requirements: ["PCI-DSS"],
-    compliance_status: "PARTIAL" as const,
+    compliance_status: "COMPLETE" as const,
     expected_go_live_date: null,
     go_live_date_status: "MISSING" as const,
     comes_from_mor: false,
@@ -660,53 +663,53 @@ Key Points:
     processed_at: new Date("2025-01-10T16:30:00Z"),
   },
   {
-    id: "evt_nubank_email",
-    merchant_id: "nubank",
+    id: "evt_indrive_email",
+    merchant_id: "indrive",
     source_type: "EMAIL" as const,
     source_id: "gmail_msg_67890",
     raw_content: `
-From: Cristina Junqueira <cristina@nubank.com.br>
+From: Arsen Tomsky <arsen@indrive.com>
 To: Ana Silva <ana.silva@yuno.com>
-Subject: Nubank Payment Integration - Additional Requirements
+Subject: inDrive Payment Integration - Additional Requirements
 
 Hi Ana,
 
 Following up on our call yesterday, I wanted to clarify a few points:
 
 1. We're coming from a Merchant of Record setup, so we need a smooth transition
-2. PIX is absolutely critical for us - it's 60% of our transaction volume
-3. We need Open Banking integration for account verification
-4. Expected volume: $120M USD/month
-5. Must comply with BACEN (Brazilian Central Bank) regulations
-6. We're also expanding to Mexico, need SPEI support there
+2. PIX is absolutely critical for us in Brazil - it's 55% of our rider transaction volume
+3. We need real-time driver payouts - this is essential for our business model
+4. Expected volume: $35M USD/month across LATAM
+5. Peru is growing fast - we need Yape integration there
+6. We're also expanding in Mexico, need OXXO for cash payments
 
 Let me know if you need any additional information.
 
 Best,
-Cristina
+Arsen
     `,
     metadata: {
-      from: "cristina@nubank.com.br",
+      from: "arsen@indrive.com",
       to: "ana.silva@yuno.com",
-      subject: "Nubank Payment Integration - Additional Requirements",
+      subject: "inDrive Payment Integration - Additional Requirements",
       received_at: "2025-01-12T10:23:00Z",
     },
     processing_status: "PROCESSED" as const,
     processed_at: new Date("2025-01-12T11:00:00Z"),
   },
   {
-    id: "evt_mercadolibre_slack",
-    merchant_id: "mercadolibre",
+    id: "evt_uber_slack",
+    merchant_id: "uber",
     source_type: "SLACK" as const,
     source_id: "slack_msg_abc123",
     raw_content: `
 #sales-handoffs
-Roberto Mendoza: Just closed Mercado Libre! 🎉
-They want to use our platform for their cross-border payments
+Roberto Mendoza: Just closed Uber LATAM expansion deal! 
+They want to consolidate their payment processing through our platform
 Initial scope: BR, MX, AR, CO, CL
-PSPs: Definitely MercadoPago (their own), and they're open to Adyen for redundancy
+PSPs: They're currently on Adyen globally, open to adding Stripe for redundancy
 Still need to nail down volume metrics and compliance requirements
-Meeting scheduled for next week to go deeper
+Meeting scheduled for next week to go deeper on driver payouts
     `,
     metadata: {
       channel: "sales-handoffs",
@@ -748,9 +751,9 @@ const extractions = [
     reviewed_by: null,
   },
   {
-    id: "ext_nubank_mor",
-    inbound_event_id: "evt_nubank_email",
-    merchant_id: "nubank",
+    id: "ext_indrive_mor",
+    inbound_event_id: "evt_indrive_email",
+    merchant_id: "indrive",
     target_table: "scope_in_doc",
     target_field: "comes_from_mor",
     extracted_value: { value: true },
@@ -762,23 +765,23 @@ const extractions = [
     reviewed_by: null,
   },
   {
-    id: "ext_nubank_compliance",
-    inbound_event_id: "evt_nubank_email",
-    merchant_id: "nubank",
+    id: "ext_indrive_volume",
+    inbound_event_id: "evt_indrive_email",
+    merchant_id: "indrive",
     target_table: "scope_in_doc",
-    target_field: "compliance_requirements",
-    extracted_value: { value: ["PCI-DSS", "LGPD", "BACEN regulations"] },
+    target_field: "expected_volume",
+    extracted_value: { value: "$35M USD/month" },
     confidence: "HIGH" as const,
     reasoning:
-      "Email mentions 'Must comply with BACEN (Brazilian Central Bank) regulations'. LGPD and PCI-DSS are standard for Brazilian financial institutions.",
+      "Email mentions 'Expected volume: $35M USD/month across LATAM'. Direct statement from merchant contact.",
     status: "AUTO_APPLIED" as const,
     applied_at: new Date("2025-01-12T11:05:00Z"),
     reviewed_by: null,
   },
   {
-    id: "ext_mercadolibre_countries",
-    inbound_event_id: "evt_mercadolibre_slack",
-    merchant_id: "mercadolibre",
+    id: "ext_uber_countries",
+    inbound_event_id: "evt_uber_slack",
+    merchant_id: "uber",
     target_table: "scope_in_doc",
     target_field: "countries",
     extracted_value: { value: ["BR", "MX", "AR", "CO", "CL"] },
@@ -864,10 +867,10 @@ const audits = [
     ai_extraction_id: null,
   },
   {
-    id: "audit_nubank_mor",
-    merchant_id: "nubank",
+    id: "audit_indrive_mor",
+    merchant_id: "indrive",
     target_table: "scope_in_doc",
-    target_id: "nubank_scope",
+    target_id: "indrive_scope",
     target_field: "comes_from_mor",
     change_type: "UPDATE" as const,
     old_value: false,
@@ -875,26 +878,26 @@ const audits = [
     actor_type: "AI" as const,
     actor_id: null,
     source_type: "EMAIL" as const,
-    source_id: "evt_nubank_email",
+    source_id: "evt_indrive_email",
     reason:
-      "AI detected Merchant of Record origin from email. Cristina explicitly stated 'We're coming from a Merchant of Record setup' requiring smooth transition planning.",
-    ai_extraction_id: "ext_nubank_mor",
+      "AI detected Merchant of Record origin from email. Arsen explicitly stated 'We're coming from a Merchant of Record setup' requiring smooth transition planning.",
+    ai_extraction_id: "ext_indrive_mor",
   },
   {
-    id: "audit_nubank_dependencies_manual",
-    merchant_id: "nubank",
+    id: "audit_indrive_dependencies_manual",
+    merchant_id: "indrive",
     target_table: "scope_in_doc",
-    target_id: "nubank_scope",
+    target_id: "indrive_scope",
     target_field: "dependencies",
     change_type: "UPDATE" as const,
-    old_value: ["Open Banking integration"],
-    new_value: ["Open Banking integration", "PIX QR Code support"],
+    old_value: ["Driver payout system"],
+    new_value: ["Driver payout system", "Fraud scoring integration"],
     actor_type: "USER" as const,
     actor_id: "diego_fernandez",
     source_type: "MANUAL" as const,
     source_id: null,
     reason:
-      "Added PIX QR Code as critical dependency after technical review. Required for 60% of transaction volume.",
+      "Added fraud scoring as critical dependency after technical review. Required for ride-hailing fraud prevention.",
     ai_extraction_id: null,
   },
 ];
@@ -923,14 +926,14 @@ const attachments = [
     uploaded_by: "carlos_ramirez",
   },
   {
-    id: "attach_nubank_compliance",
-    merchant_id: "nubank",
-    filename: "Nubank_BACEN_Compliance.pdf",
+    id: "attach_indrive_payout_spec",
+    merchant_id: "indrive",
+    filename: "inDrive_Payout_Requirements.pdf",
     file_type: "application/pdf",
     file_size: 3145728,
-    storage_url: "s3://yuno-docs/nubank/compliance/bacen_cert.pdf",
-    category: "OTHER" as const,
-    description: "BACEN compliance certification and requirements",
+    storage_url: "s3://yuno-docs/indrive/technical/payout_requirements.pdf",
+    category: "TECHNICAL_DOC" as const,
+    description: "Driver payout system requirements and SLA specifications",
     uploaded_by: "ana_silva",
   },
 ];
@@ -1105,9 +1108,6 @@ async function seed() {
     );
     console.log(
       `     - TECHNICAL_DOC: ${attachments.filter((a) => a.category === "TECHNICAL_DOC").length}`,
-    );
-    console.log(
-      `     - OTHER: ${attachments.filter((a) => a.category === "OTHER").length}`,
     );
 
     console.log("\n═══════════════════════════════════════");

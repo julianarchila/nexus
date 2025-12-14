@@ -16,8 +16,8 @@ function mergeArrayValues(existing: string[], newValues: unknown): string[] {
 function determineFieldStatus(value: unknown): FieldStatus {
   if (value === null || value === undefined) return "MISSING";
   if (Array.isArray(value) && value.length === 0) return "MISSING";
-  if (Array.isArray(value) && value.length > 0) return "PARTIAL";
-  return "PARTIAL"; // Scalar values default to PARTIAL (user can mark as COMPLETE later)
+  if (typeof value === "string" && value.trim() === "") return "MISSING";
+  return "COMPLETE";
 }
 
 /**

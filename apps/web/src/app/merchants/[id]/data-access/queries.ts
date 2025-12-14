@@ -13,6 +13,19 @@ export function useMerchantQueryOptions(merchantId: string) {
 }
 
 /**
+ * Query options for pipeline readiness data
+ */
+export function usePipelineQueryOptions(merchantId: string) {
+  const trpc = useTRPC();
+
+  return {
+    scopeReadiness: trpc.pipeline.getScopeReadiness.queryOptions(merchantId),
+    implementationReadiness:
+      trpc.pipeline.getImplementationReadiness.queryOptions(merchantId),
+  };
+}
+
+/**
  * Query options for audit log with pagination
  * Pattern 2: Server-side pagination for large datasets
  */
