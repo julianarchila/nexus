@@ -1,51 +1,25 @@
-import {
-    getPaymentProcessors,
-    getCountryProcessorFeatures,
-} from "@/core/actions/payments";
-import { DashboardTabs } from "@/components/payments";
+"use client";
 
-export default async function Home() {
-    const [processorsResult, featuresResult] = await Promise.all([
-        getPaymentProcessors({ page: 1, pageSize: 10 }),
-        getCountryProcessorFeatures({ page: 1, pageSize: 10 }),
-    ]);
+import { PaymentProcessorsSupportTable } from "@/components/payments";
 
-    if (!processorsResult.success || !processorsResult.data || !processorsResult.pagination ||
-        !featuresResult.success || !featuresResult.data || !featuresResult.pagination) {
-        return (
-            <div className="min-h-screen bg-background p-8">
-                <div className="max-w-7xl mx-auto">
-                    <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
-                        <p className="text-destructive">
-                            {processorsResult.error || featuresResult.error || "Failed to load data"}
-                        </p>
-                    </div>
-                </div>
-            </div>
-        );
-    }
+export default function Home() {
+  return (
+    <div className="w-full flex mt-4">
+      <div className="min-h-screen bg-white p-6 w-full flex items-center justify-center">
+        <div className="max-w-7xl w-full space-y-6">
+          <header>
+            <h1 className="text-3xl font-bold tracking-tight">
+              Payment Processors
+            </h1>
+            <p className="text-muted-foreground mt-2">
+              Search and filter to check supported PSPs, countries, and payment
+              methods.
+            </p>
+          </header>
 
-    return (
-        <div className="w-full flex mt-4">
-            <div className="min-h-screen bg-white p-6 w-full flex items-center justify-center">
-                <div className="max-w-7xl w-full space-y-6">
-                    <header>
-                        <h1 className="text-3xl font-bold tracking-tight">
-                            Payment Processors
-                        </h1>
-                        <p className="text-muted-foreground mt-2">
-                            Manage payment processors and their country-specific features
-                        </p>
-                    </header>
-
-                    <DashboardTabs
-                        processorsData={processorsResult.data}
-                        processorsPagination={processorsResult.pagination}
-                        featuresData={featuresResult.data}
-                        featuresPagination={featuresResult.pagination}
-                    />
-                </div>
-            </div>
+          <PaymentProcessorsSupportTable />
         </div>
-    );
+      </div>
+    </div>
+  );
 }
