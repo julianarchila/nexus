@@ -252,9 +252,9 @@ export function ScopeEditor({ scope, merchantId, merchantName = "Merchant" }: Sc
             Scope In Doc
           </h3>
           <div className="flex gap-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
+            <Button
+              variant="outline"
+              size="sm"
               onClick={handleDownloadPDF}
               disabled={isGenerating}
             >
