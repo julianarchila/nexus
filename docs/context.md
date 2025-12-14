@@ -1,143 +1,203 @@
-## 1. Context: Who we are & the problem
 
 We are **Yuno**, a payments orchestration platform.
 Yuno connects merchants to multiple PSPs (payment service providers), payment methods, and countries, and helps route, retry, and optimize payments across providers.
 
-### The problem we are solving
 
-From the very first interaction with a merchant, critical information is generated:
+## Contexto
 
-* Technical requirements (PSPs, countries, payment methods)
-* Operational constraints (compliance, data storage limits, onboarding exceptions)
-* Commercial agreements
-* Key dates and commitments
-* Special integration flows
+Yuno opera en un entorno de alta complejidad técnica y operativa, donde cada merchant tiene un conjunto único de requisitos: procesadores de pago, países, métodos de pago, restricciones regulatorias, acuerdos comerciales y fechas comprometidas.
 
-This information currently lives scattered across:
+Esta información se genera desde el primer contacto con el merchant y evoluciona a lo largo de su lifecycle (Sales → Scoping → Implementation → Live).
 
-* Sales calls
-* Slack conversations
-* Meeting recordings
-* Salesforce notes
-* Docs and spreadsheets
+En la práctica, esta información **no nace de forma estructurada**. Se produce en:
 
-As merchants move through their lifecycle (Sales → Integration → Support → Live), this context:
+- Llamadas de ventas e implementación
+- Correos electrónicos
+- Conversaciones en Slack
+- Documentos y contratos
+- Notas en Salesforce
 
-* Gets lost
-* Gets duplicated
-* Gets contradicted
-
-This causes:
-
-* Internal rework
-* Broken handoffs between Sales, PM, and Support
-* Merchants discovering blockers too late (e.g., unsupported PSPs)
-
-### Example problems
-
-* A merchant mentions during a call that they require **Adyen + Brazil + Pix**, Sales agrees verbally, but Yuno does **not support Adyen yet** → blocker discovered weeks later.
-* Operational constraints (e.g., “we cannot store any card data”) are mentioned in Slack but never reflected in Salesforce.
-* Go-live dates are mentioned verbally but never tracked or validated.
+Hoy, cada uno de estos canales captura solo una parte del contexto, y **no existe un mecanismo sistemático para consolidar, validar y gobernar esa información antes de avanzar de etapa**.
 
 ---
 
-## 2. Proposed solution
+## Descripción del problema
 
-We are building a **real-time desktop Copilot** (Electron app) for Sales, PM, and Support, similar in UX to tools like *Cluely*.
+El problema central es la **falta de control sobre el estado real y la completitud del contexto del merchant**.
 
-### Core idea
+La información crítica:
 
-* The user opens the Copilot before joining a call.
-* The user selects the **merchant** they are speaking with.
-* The Copilot listens to the meeting audio in real time.
-* Audio is transcribed using **Whisper**.
-* Transcribed text is analyzed to extract structured “claims” such as:
+- Se encuentra distribuida entre múltiples herramientas
+- Se pierde durante los handoffs entre equipos
+- Se repite o se contradice
+- No tiene trazabilidad clara sobre su origen
+- No se valida formalmente antes de pasar a implementación
 
-  * PSP requirements
-  * Countries
-  * Payment methods
-  * Restrictions
-  * Dates
-  * Risks
-* These claims are compared against:
+Como resultado:
 
-  * Salesforce (source of truth)
-  * Internal capability data (supported PSPs, methods, countries)
+- Merchants son promovidos a implementación sin un scope completo
+- Se descubren requisitos técnicos tarde (PSPs no soportados, restricciones operativas, excepciones)
+- Se genera retrabajo entre Sales, PM e Implementation
+- La experiencia del merchant se deteriora por cambios tardíos de alcance
 
-### Real-time assistance
-
-While the call is happening, the Copilot can:
-
-* Alert the user if the merchant mentions something unsupported
-* Surface relevant context from Salesforce
-* Suggest follow-up questions
-* Allow the user to trigger actions with one click:
-
-  * Create a Linear ticket
-  * Update Salesforce fields
-  * Add structured notes linked to the original conversation
-
-### Design principles
-
-* Salesforce remains the **source of truth**
-* The Copilot assists humans; it does not make irreversible decisions autonomously
-* Every extracted insight is traceable to its source (timestamp + transcript)
-* Real-time, low-latency feedback is critical
+En un sistema de pagos, donde una decisión incorrecta puede bloquear un go-live completo, **avanzar sin visibilidad y validación del contexto introduce riesgo técnico y operativo**.
 
 ---
 
-## 3. What you need to do
+## Solución propuesta
 
+Se propone construir un **Merchant Control & Readiness System**, cuyo objetivo es centralizar el perfil del merchant, estructurar automáticamente la información proveniente de canales no estructurados y **bloquear el avance de etapa hasta que el contexto esté completo y validado por un humano**.
 
-1. **Analyze the existing repository** (structure, tech stack, patterns).
-2. Design a **concrete implementation plan** for this system.
-
-### The implementation should include:
-
-* Proposed high-level architecture
-* Clear separation of:
-
-  * Electron client responsibilities
-  * Backend responsibilities
-* Audio capture and streaming approach
-* Whisper integration strategy (chunking, latency considerations)
-* NLP / insight extraction flow
-* Data models for:
-
-  * Transcriptions
-  * Extracted claims
-  * Suggestions / alerts
-* API design:
-
-  * WebSocket vs REST
-  * Key endpoints
-* How actions (Salesforce updates, Linear tickets) are invoked
-* Security considerations (auth, data handling)
-* A suggested **MVP scope** vs future extensions
-
-### Constraints & assumptions
-
-* Electron is mandatory for the client
-* Whisper is the speech-to-text engine
-* Salesforce is the source of truth (We will use a notion crm for the mvp)
-* Linear is the ticketing system
-* Real-time feedback matters more than perfect accuracy
+El sistema no reemplaza a los equipos; **los asiste y les da control**.
 
 ---
 
-### Output format
+## Componentes y requisitos del sistema
 
-Please structure your answer as:
+### 1. Merchant Dashboard (Source of Truth operativo)
 
-1. **System Architecture Overview**
-2. **Client (Electron) Design**
-3. **Backend Design**
-4. **Data Models**
-5. **API Contracts**
-6. **Whisper Integration Details**
-7. **MVP Implementation Plan**
-8. **Key Risks & Tradeoffs**
+- Dashboard central por merchant
+- Contiene:
+    - Merchant Profile (datos generales y estado actual)
+    - Scope In Doc (información requerida para implementación)
+    - Estado en el pipeline (lifecycle stage)
+- Permite a los equipos:
+    - Ver el estado real del merchant
+    - Identificar información faltante
+    - Revisar cambios sugeridos por AI
+    - Validar o corregir datos antes de avanzar de etapa
 
-Be explicit and pragmatic.
-Assume this system will be built and used in production.
+---
 
+### 2. Ingesta de datos (Inbound data)
+
+El sistema recibe información automáticamente desde múltiples fuentes:
+
+### a. Meetings (Sales / Implementation)
+
+- Webhook recibe transcripciones de llamadas
+- Se almacenan como eventos inmutables
+- Se procesan mediante AI para extraer información relevante:
+    - Requisitos técnicos
+    - Restricciones operativas
+    - Decisiones tomadas
+    - Fechas comprometidas
+
+### b. Emails (Gmail)
+
+- Se analizan correos entrantes relacionados con el merchant
+- Se extrae información relevante de forma automática
+- El contenido original se conserva completo
+
+📌 Ninguna fuente sobrescribe datos directamente sin dejar rastro.
+
+---
+
+### 3. AI-powered data extraction & suggestion
+
+El sistema utiliza LLMs para:
+
+- Extraer datos estructurados desde texto libre
+- Detectar posibles actualizaciones al perfil o al scope
+- Proponer cambios con un nivel de confianza
+
+Ejemplo:
+
+> “Detecté que el merchant viene de un Merchant of Record y requiere un PSP adicional en Brasil.”
+> 
+
+La AI:
+
+- **Puede sugerir y actualizar datos**
+- **Nunca elimina información existente**
+- **Nunca cambia etapas del pipeline**
+
+---
+
+### 4. Event Log / Audit Trail (historial completo)
+
+Cada acción queda registrada:
+
+- Ingesta de meetings
+- Procesamiento de emails
+- Actualizaciones automáticas de campos
+- Correcciones manuales
+- Bloqueos o promociones de etapa
+
+El log incluye:
+
+- Qué cambió
+- Valor anterior y nuevo
+- Fuente (meeting, email, usuario, AI)
+- Timestamp
+- Actor (AI o humano)
+
+Esto garantiza:
+
+- Auditoría
+- Trazabilidad
+- Confianza en el sistema
+
+---
+
+### 5. Scope In Doc (Implementation Readiness)
+
+El Scope In Doc representa **la información mínima requerida para implementar un merchant**:
+
+- PSPs
+- Países
+- Métodos de pago
+- Restricciones
+- Métricas esperadas
+- Dependencias especiales
+
+Cada campo puede estar:
+
+- Completo
+- Parcial
+- Faltante
+
+El sistema evalúa continuamente el estado de completitud.
+
+---
+
+### 6. Lifecycle & Promotion Gates
+
+El merchant avanza por etapas definidas del pipeline.
+
+Cuando un usuario intenta promover un merchant a una nueva etapa:
+
+1. El sistema ejecuta validaciones automáticas:
+    - ¿El scope está completo?
+    - ¿Existen requisitos no soportados?
+    - ¿Hay contradicciones?
+2. Si hay problemas:
+    - Se bloquea la promoción
+    - Se muestra qué información falta o qué debe corregirse
+3. **Un miembro del equipo de Yuno revisa, corrige o añade la información necesaria**
+4. Solo después de esta verificación humana, el merchant puede avanzar
+
+---
+
+### 7. Attachments & Contextual Chat
+
+- Se pueden adjuntar contratos, documentos y archivos relevantes al perfil
+- Cada merchant tiene un chat contextual:
+    - Para hacer preguntas
+    - Para pedir resúmenes
+    - Para aclarar dudas sobre su estado
+- El chat se basa únicamente en el contexto del merchant
+
+---
+
+## Resultado esperado
+
+Con este sistema:
+
+- El merchant nunca avanza sin contexto validado
+- Los equipos trabajan con información consistente y trazable
+- Se reduce retrabajo y fricción entre equipos
+- Se mejora el time-to-go-live
+- Se crea una base sólida para escalar operaciones
+
+---
