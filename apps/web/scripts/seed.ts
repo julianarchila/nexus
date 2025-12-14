@@ -1,6 +1,4 @@
 import "dotenv/config";
-import { eq } from "drizzle-orm";
-
 import { db } from "../src/core/db/client";
 import {
   aiExtraction,
@@ -14,10 +12,6 @@ import {
   paymentProcessors,
   scopeInDoc,
 } from "../src/core/db/schema";
-import {
-  generateEmbedding,
-  prepareEventTextForEmbedding,
-} from "../src/lib/embedding";
 
 // Datos realistas de procesadores de pago principales en LATAM
 const processors = [
@@ -1413,37 +1407,6 @@ async function seed() {
       await db.insert(inboundEvent).values(event).onConflictDoNothing();
     }
     console.log(`✅ Inserted ${events.length} inbound events`);
-
-    // ==========================================
-    // 4.5 GENERATE EMBEDDINGS FOR EVENTS
-    // ==========================================
-    console.log("🧠 Generating embeddings for events...");
-    let embeddingsGenerated = 0;
-    for (const event of events) {
-      try {
-        const text = prepareEventTextForEmbedding(
-          event.raw_content,
-          event.metadata as Record<string, unknown>,
-        );
-        const embedding = await generateEmbedding(text);
-
-        await db
-          .update(inboundEvent)
-          .set({ embedding })
-          .where(eq(inboundEvent.id, event.id));
-
-        embeddingsGenerated++;
-        console.log(`   ✅ Generated embedding for ${event.id}`);
-      } catch (error) {
-        console.log(
-          `   ⚠️  Failed to generate embedding for ${event.id}:`,
-          error,
-        );
-      }
-    }
-    console.log(
-      `✅ Generated ${embeddingsGenerated}/${events.length} embeddings`,
-    );
 
     // ==========================================
     // 5. AI EXTRACTIONS

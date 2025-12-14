@@ -482,30 +482,6 @@ export const appRouter = router({
 
         return data;
       }),
-
-    /**
-     * Semantic search for events within a merchant
-     * Uses pgvector for similarity search
-     */
-    search: publicProcedure
-      .input(
-        z.object({
-          merchantId: z.string(),
-          query: z.string().min(1),
-          limit: z.number().min(1).max(50).optional(),
-          similarityThreshold: z.number().min(0).max(1).optional(),
-        }),
-      )
-      .query(async ({ input }) => {
-        const { searchEvents } = await import(
-          "@/core/services/event-search.service"
-        );
-
-        return searchEvents(input.merchantId, input.query, {
-          limit: input.limit,
-          similarityThreshold: input.similarityThreshold,
-        });
-      }),
   }),
 
   // ===========================================
