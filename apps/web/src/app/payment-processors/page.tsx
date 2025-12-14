@@ -1,8 +1,8 @@
 "use client";
 
-import { PaymentProcessorsSupportTable } from "@/components/payments";
+import { PaymentProcessorsContainer } from "./components/payment-processors-container";
 
-export default function Home() {
+export default function PaymentProcessorsPage() {
   return (
     <div className="w-full flex mt-4">
       <div className="min-h-screen bg-white p-6 w-full flex items-center justify-center">
@@ -17,7 +17,7 @@ export default function Home() {
             </p>
           </header>
 
-          <PaymentProcessorsSupportTable />
+          <PaymentProcessorsContainer />
         </div>
       </div>
     </div>
