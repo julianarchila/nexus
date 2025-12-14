@@ -182,11 +182,12 @@ Cuando un usuario intenta promover un merchant a una nueva etapa:
 ### 7. Attachments & Contextual Chat
 
 - Se pueden adjuntar contratos, documentos y archivos relevantes al perfil
-- Cada merchant tiene un chat contextual:
+- Cada merchant tiene un chat contextual (efímero):
     - Para hacer preguntas
     - Para pedir resúmenes
     - Para aclarar dudas sobre su estado
 - El chat se basa únicamente en el contexto del merchant
+- **No se persiste el historial de chat** - es una herramienta de consulta temporal
 
 ---
 
@@ -199,5 +200,182 @@ Con este sistema:
 - Se reduce retrabajo y fricción entre equipos
 - Se mejora el time-to-go-live
 - Se crea una base sólida para escalar operaciones
+
+---
+
+## Estado de Implementación
+
+### ✅ Database Schema (Completado)
+
+Se ha diseñado e implementado el schema completo de la base de datos PostgreSQL usando Drizzle ORM.
+
+#### Decisiones de Diseño
+
+##### 1. Lifecycle Stages
+
+El sistema maneja **3 etapas** en el pipeline del merchant:
+
+- `SCOPING` - Definición de requisitos y alcance
+- `IMPLEMENTING` - Implementación técnica activa
+- `LIVE` - Merchant operando en producción
+
+**Decisión**: Se eliminó la etapa "Sales" del lifecycle original. El merchant entra al sistema cuando ya está en fase de scoping.
+
+##### 2. Inbound Events (Arquitectura Polimórfica)
+
+Tabla: `inboundEvent`
+
+**Decisión**: Usar una única tabla con discriminador `source_type` en lugar de tablas separadas por fuente.
+
+Tipos soportados:
+- `MEETING` - Transcripciones de Gong, Zoom, etc.
+- `EMAIL` - Correos de Gmail/Outlook
+- `SLACK` - Mensajes y threads
+- `SALESFORCE` - Notas y actualizaciones
+- `DOCUMENT` - Documentos subidos manualmente
+- `MANUAL` - Entradas manuales del equipo
+
+**Ventajas**:
+- Fácil extensión a nuevas fuentes sin cambios de schema
+- Pipeline de procesamiento unificado
+- Queries simplificadas para audit trail
+
+La metadata específica de cada fuente se almacena en un campo JSONB:
+```typescript
+// MEETING: { title, participants, duration, recorded_at }
+// EMAIL: { from, to, subject, received_at }
+// SLACK: { channel, thread_ts, author }
+```
+
+##### 3. AI Extraction & Auto-Application
+
+Tabla: `aiExtraction`
+
+**Decisión**: AI aplica cambios automáticamente cuando tiene **alta confianza**, pero todos los cambios se registran en el audit log.
+
+Workflow:
+1. Inbound event procesado → AI extrae información
+2. Si `confidence = "HIGH"` → Auto-aplicar cambio
+3. Si `confidence = "MEDIUM" | "LOW"` → Requiere revisión humana
+4. Todos los cambios AI → `auditLog` con `actor_type = "AI"` y referencia a `aiExtraction.id`
+
+**Transparencia**: Cada extracción incluye un campo `reasoning` con la explicación generada por AI.
+
+##### 4. Scope In Doc - Field-Level Completeness
+
+Tabla: `scopeInDoc`
+
+**Decisión**: Cada campo de datos tiene un campo `_status` asociado.
+
+Estados posibles:
+- `COMPLETE` - Información verificada y completa
+- `PARTIAL` - Información incompleta o requiere validación
+- `MISSING` - Sin información
+
+Campos rastreados:
+- PSPs
+- Countries
+- Payment Methods
+- Expected Volume
+- Expected Approval Rate
+- Restrictions
+- Dependencies
+- Compliance Requirements
+- Expected Go-Live Date
+
+**Ventaja**: La UI puede mostrar exactamente qué falta para completar el scope y permitir promoción de etapa.
+
+##### 5. Audit Log - Trazabilidad Total
+
+Tabla: `auditLog`
+
+**Decisión**: Registrar **cada cambio** en merchant data con contexto completo.
+
+Cada entrada incluye:
+- `target_table`, `target_id`, `target_field` - Qué cambió
+- `old_value`, `new_value` - Valores (JSONB)
+- `actor_type` - `AI | USER | SYSTEM`
+- `actor_id` - ID del usuario (si aplica)
+- `source_type`, `source_id` - De dónde vino el cambio
+- `reason` - Por qué se hizo (generado por AI o provisto por usuario)
+- `ai_extraction_id` - Link a la extracción AI (si aplica)
+
+**Inmutabilidad**: No se soporta eliminación de merchants. Los datos son permanentes para auditoría.
+
+##### 6. Promotion Gates
+
+**Decisión**: No persistir intentos de promoción en base de datos.
+
+Rationale:
+- Las validaciones son reglas de negocio que pueden cambiar
+- Los bloqueos se determinan en runtime basados en `scopeInDoc` completeness
+- El historial de cambios de stage se captura en `auditLog` con `change_type = "STAGE_CHANGE"`
+
+##### 7. Chat Contextual
+
+**Decisión**: No persistir historial de chat.
+
+Rationale:
+- El chat es una herramienta de consulta temporal
+- Toda la información importante debe capturarse en el merchant profile/scope
+- Reduce complejidad y almacenamiento
+- El contexto del chat se reconstruye desde el estado actual del merchant
+
+##### 8. Attachments
+
+Tabla: `attachment`
+
+**Decisión**: Almacenar solo metadata, archivos en object storage (S3/R2).
+
+Categorías:
+- `CONTRACT` - Contratos y acuerdos
+- `TECHNICAL_DOC` - Documentación técnica
+- `OTHER` - Otros documentos relevantes
+
+#### Schema Tables
+
+| Tabla | Propósito | Registros Estimados |
+|-------|-----------|---------------------|
+| `merchantProfile` | Datos core del merchant + lifecycle | 1 por merchant |
+| `scopeInDoc` | Requisitos de implementación | 1 por merchant |
+| `inboundEvent` | Eventos de múltiples fuentes | 10-100 por merchant |
+| `aiExtraction` | Cambios detectados por AI | 5-50 por merchant |
+| `auditLog` | Historial completo de cambios | 50-500 por merchant |
+| `attachment` | Archivos adjuntos | 2-10 por merchant |
+| `paymentProcessors` | Catálogo de PSPs | ~100 registros |
+| `countryProcessorFeatures` | Capacidades por país | ~1000 registros |
+
+#### Índices Implementados
+
+**Optimizaciones para queries comunes**:
+
+- `merchantProfile`: `lifecycle_stage`, `contact_email`
+- `scopeInDoc`: `merchant_id`, `is_complete`
+- `inboundEvent`: `merchant_id`, `source_type`, `processing_status`, `created_at`
+- `aiExtraction`: `merchant_id`, `inbound_event_id`, `status`, `confidence`
+- `auditLog`: `merchant_id`, `target_table`, `actor_type`, `created_at`
+- `attachment`: `merchant_id`, `category`
+
+#### Relaciones
+
+```
+merchantProfile (1)
+    ├── (1) scopeInDoc
+    ├── (N) inboundEvent
+    │       └── (N) aiExtraction
+    ├── (N) auditLog
+    └── (N) attachment
+
+paymentProcessors
+    └── (N) countryProcessorFeatures
+```
+
+### 🔄 Próximos Pasos
+
+1. **Generar Drizzle migrations** - Crear archivos de migración SQL
+2. **TRPC Routes** - Endpoints para CRUD de merchants
+3. **AI Processing Pipeline** - Implementar lógica de extracción
+4. **Promotion Gate Logic** - Reglas de validación para cambios de stage
+5. **Dashboard UI** - Interfaz para visualizar y gestionar merchants
 
 ---

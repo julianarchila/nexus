@@ -1,8 +1,9 @@
 import "dotenv/config";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { eq } from "drizzle-orm";
-import { merchant_profile, scope_in_doc_info } from "../src/core/db/schema";
-import { MONG_WEBHOOK_URL } from "../config";
+import { merchantProfile, scopeInDoc } from "../src/core/db/schema";
+import { inngest } from "../src/lib/inngest";
+import type { GongReceivedPayload } from "../src/core/ingestion/events";
 
 const db = drizzle({
   connection: {
@@ -191,8 +192,8 @@ const events: Record<string, { name: string; data: typeof event1_discovery }> =
 async function showCurrentScope() {
   const merchant = await db
     .select()
-    .from(merchant_profile)
-    .where(eq(merchant_profile.contact_email, TEST_MERCHANT_EMAIL))
+    .from(merchantProfile)
+    .where(eq(merchantProfile.contact_email, TEST_MERCHANT_EMAIL))
     .limit(1);
 
   if (merchant.length === 0) {
@@ -202,8 +203,8 @@ async function showCurrentScope() {
 
   const scope = await db
     .select()
-    .from(scope_in_doc_info)
-    .where(eq(scope_in_doc_info.merchant_profile_id, merchant[0].id))
+    .from(scopeInDoc)
+    .where(eq(scopeInDoc.merchant_id, merchant[0].id))
     .limit(1);
 
   console.log("\n📊 Current Scope for Acme Corp:");
@@ -213,56 +214,52 @@ async function showCurrentScope() {
     console.log("  (no scope document yet - will be created on first event)");
   } else {
     const s = scope[0];
-    const integrations = s.integrations as {
-      psps: string[];
-      countries: string[];
-      paymentMethods: string[];
-    } | null;
-    console.log(`  PSPs: ${integrations?.psps?.join(", ") || "(none)"}`);
+    console.log(`  PSPs: ${(s.psps as string[])?.join(", ") || "(none)"}`);
     console.log(
-      `  Countries: ${integrations?.countries?.join(", ") || "(none)"}`,
+      `  Countries: ${(s.countries as string[])?.join(", ") || "(none)"}`,
     );
     console.log(
-      `  Payment Methods: ${integrations?.paymentMethods?.join(", ") || "(none)"}`,
+      `  Payment Methods: ${(s.payment_methods as string[])?.join(", ") || "(none)"}`,
     );
-    console.log(`  Volume: ${s.volume_metrics || "(not set)"}`);
-    console.log(`  Approval Rate: ${s.aproval_rate || "(not set)"}`);
+    console.log(`  Volume: ${s.expected_volume || "(not set)"}`);
+    console.log(`  Approval Rate: ${s.expected_approval_rate || "(not set)"}`);
     console.log(`  Deal Closed By: ${s.deal_closed_by || "(not set)"}`);
-    console.log(`  From MOF: ${s.comes_from_mof}`);
+    console.log(`  From MOR: ${s.comes_from_mor}`);
   }
 
   return merchant[0];
 }
 
 async function sendWebhook(eventData: typeof event1_discovery) {
-  console.log(`\n📤 Sending webhook to Inngest...`);
-  console.log(`   URL: ${MONG_WEBHOOK_URL.substring(0, 50)}...`);
+  console.log(`\n📤 Sending event to Inngest...`);
+
+  // Transform old format to new GongReceivedPayload format
+  const payload: GongReceivedPayload = {
+    callId: eventData.metaData.id,
+    title: eventData.metaData.title,
+    transcript: eventData.meetingSummary,
+    parties: eventData.parties.map((p) => ({
+      affiliation: p.affiliation as "External" | "Internal",
+      emailAddress: p.emailAddress,
+      name: p.name,
+      title: p.title,
+    })),
+    duration: eventData.metaData.duration,
+    recordedAt: eventData.metaData.started,
+  };
 
   try {
-    const response = await fetch(MONG_WEBHOOK_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Gong-Signature": "mock_signature_123",
-      },
-      body: JSON.stringify([eventData]),
+    await inngest.send({
+      name: "ingest/gong.received",
+      data: payload,
     });
 
-    const responseText = await response.text();
-
-    if (response.ok) {
-      console.log(
-        `\n✅ Webhook sent successfully (Status: ${response.status})`,
-      );
-      console.log(`   Response: ${responseText}`);
-    } else {
-      console.log(`\n⚠️  Webhook returned status ${response.status}`);
-      console.log(`   Response: ${responseText}`);
-    }
-
-    return response.ok;
+    console.log(`\n✅ Event sent successfully to Inngest`);
+    console.log(`   Call ID: ${payload.callId}`);
+    console.log(`   Title: ${payload.title}`);
+    return true;
   } catch (error) {
-    console.error(`\n❌ Error sending webhook:`, error);
+    console.error(`\n❌ Error sending event to Inngest:`, error);
     return false;
   }
 }

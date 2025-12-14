@@ -1,11 +1,14 @@
 import "dotenv/config";
 import { db } from "../src/core/db/client";
-import { eq } from "drizzle-orm";
 import {
   paymentProcessors,
   countryProcessorFeatures,
-  merchant_profile,
-  scope_in_doc_info,
+  merchantProfile,
+  scopeInDoc,
+  inboundEvent,
+  aiExtraction,
+  auditLog,
+  attachment,
 } from "../src/core/db/schema";
 
 // Datos realistas de procesadores de pago principales en LATAM
@@ -480,12 +483,466 @@ const countryFeatures = [
   },
 ];
 
+// ===========================================
+// MERCHANT DATA
+// ===========================================
+
+const merchants = [
+  {
+    id: "rappi",
+    name: "Rappi",
+    contact_email: "payments@rappi.com",
+    contact_name: "Sebastián Mejía",
+    lifecycle_stage: "LIVE" as const,
+    sales_owner: "María González",
+    implementation_owner: "Carlos Ramírez",
+  },
+  {
+    id: "nubank",
+    name: "Nubank",
+    contact_email: "integrations@nubank.com.br",
+    contact_name: "Cristina Junqueira",
+    lifecycle_stage: "IMPLEMENTING" as const,
+    sales_owner: "Ana Silva",
+    implementation_owner: "Diego Fernández",
+  },
+  {
+    id: "mercadolibre",
+    name: "Mercado Libre",
+    contact_email: "payments-eng@mercadolibre.com",
+    contact_name: "Marcos Galperin",
+    lifecycle_stage: "SCOPING" as const,
+    sales_owner: "Roberto Mendoza",
+    implementation_owner: null,
+  },
+  {
+    id: "acmecorp",
+    name: "Acme Corp",
+    contact_email: "maria.garcia@acmecorp.com",
+    contact_name: "María García",
+    lifecycle_stage: "SCOPING" as const,
+    sales_owner: "Juan Pérez",
+    implementation_owner: null,
+  },
+];
+
+const scopes = [
+  {
+    id: "rappi_scope",
+    merchant_id: "rappi",
+    psps: ["stripe", "adyen", "mercadopago"],
+    psps_status: "COMPLETE" as const,
+    countries: ["BR", "MX", "CO", "AR", "CL"],
+    countries_status: "COMPLETE" as const,
+    payment_methods: ["credit_card", "debit_card", "pix", "oxxo", "pse"],
+    payment_methods_status: "COMPLETE" as const,
+    expected_volume: "$50M USD/month",
+    expected_volume_status: "COMPLETE" as const,
+    expected_approval_rate: "85%",
+    expected_approval_rate_status: "COMPLETE" as const,
+    restrictions: ["No crypto payments", "PCI-DSS Level 1 required"],
+    restrictions_status: "COMPLETE" as const,
+    dependencies: ["Fraud detection service", "3DS authentication"],
+    dependencies_status: "COMPLETE" as const,
+    compliance_requirements: ["PCI-DSS", "GDPR", "LGPD"],
+    compliance_status: "COMPLETE" as const,
+    expected_go_live_date: new Date("2025-03-15"),
+    go_live_date_status: "COMPLETE" as const,
+    comes_from_mor: false,
+    deal_closed_by: "María González",
+    is_complete: true,
+  },
+  {
+    id: "nubank_scope",
+    merchant_id: "nubank",
+    psps: ["stripe", "pagseguro"],
+    psps_status: "COMPLETE" as const,
+    countries: ["BR", "MX"],
+    countries_status: "COMPLETE" as const,
+    payment_methods: ["credit_card", "pix", "boleto_bancario"],
+    payment_methods_status: "PARTIAL" as const,
+    expected_volume: "$120M USD/month",
+    expected_volume_status: "COMPLETE" as const,
+    expected_approval_rate: "90%",
+    expected_approval_rate_status: "COMPLETE" as const,
+    restrictions: ["Brazil-first focus", "Real-time settlement required"],
+    restrictions_status: "COMPLETE" as const,
+    dependencies: ["Open Banking integration", "PIX QR Code support"],
+    dependencies_status: "PARTIAL" as const,
+    compliance_requirements: ["PCI-DSS", "LGPD", "BACEN regulations"],
+    compliance_status: "COMPLETE" as const,
+    expected_go_live_date: new Date("2025-06-01"),
+    go_live_date_status: "COMPLETE" as const,
+    comes_from_mor: true,
+    deal_closed_by: "Ana Silva",
+    is_complete: false,
+  },
+  {
+    id: "mercadolibre_scope",
+    merchant_id: "mercadolibre",
+    psps: ["mercadopago", "adyen"],
+    psps_status: "PARTIAL" as const,
+    countries: ["BR", "MX", "AR", "CO", "CL"],
+    countries_status: "COMPLETE" as const,
+    payment_methods: ["credit_card", "mercado_credito"],
+    payment_methods_status: "PARTIAL" as const,
+    expected_volume: null,
+    expected_volume_status: "MISSING" as const,
+    expected_approval_rate: null,
+    expected_approval_rate_status: "MISSING" as const,
+    restrictions: [],
+    restrictions_status: "MISSING" as const,
+    dependencies: [],
+    dependencies_status: "MISSING" as const,
+    compliance_requirements: ["PCI-DSS"],
+    compliance_status: "PARTIAL" as const,
+    expected_go_live_date: null,
+    go_live_date_status: "MISSING" as const,
+    comes_from_mor: false,
+    deal_closed_by: "Roberto Mendoza",
+    is_complete: false,
+  },
+  {
+    id: "acmecorp_scope",
+    merchant_id: "acmecorp",
+    psps: [],
+    psps_status: "MISSING" as const,
+    countries: [],
+    countries_status: "MISSING" as const,
+    payment_methods: [],
+    payment_methods_status: "MISSING" as const,
+    expected_volume: null,
+    expected_volume_status: "MISSING" as const,
+    expected_approval_rate: null,
+    expected_approval_rate_status: "MISSING" as const,
+    restrictions: [],
+    restrictions_status: "MISSING" as const,
+    dependencies: [],
+    dependencies_status: "MISSING" as const,
+    compliance_requirements: [],
+    compliance_status: "MISSING" as const,
+    expected_go_live_date: null,
+    go_live_date_status: "MISSING" as const,
+    comes_from_mor: false,
+    deal_closed_by: null,
+    is_complete: false,
+  },
+];
+
+const events = [
+  {
+    id: "evt_rappi_kickoff",
+    merchant_id: "rappi",
+    source_type: "MEETING" as const,
+    source_id: "gong_call_12345",
+    raw_content: `
+Meeting: Rappi Implementation Kickoff
+Date: 2025-01-10
+Participants: Sebastián Mejía (Rappi), Carlos Ramírez (Yuno), María González (Yuno)
+
+Key Points:
+- Rappi needs to process payments across 5 LATAM countries
+- Priority countries: Brazil (PIX required), Mexico (OXXO essential), Colombia (PSE)
+- Current volume: $50M USD/month, expected growth to $80M by Q3
+- Must support installments for credit cards in Brazil and Argentina
+- Fraud detection is critical - approval rate target is 85%
+- Timeline: Go-live by March 15, 2025
+- Compliance: PCI-DSS Level 1, GDPR for EU users, LGPD for Brazil
+- Technical requirements: 3DS2 authentication, webhook support, real-time reporting
+    `,
+    metadata: {
+      title: "Rappi Implementation Kickoff",
+      participants: ["Sebastián Mejía", "Carlos Ramírez", "María González"],
+      duration: 60,
+      recorded_at: "2025-01-10T15:00:00Z",
+    },
+    processing_status: "PROCESSED" as const,
+    processed_at: new Date("2025-01-10T16:30:00Z"),
+  },
+  {
+    id: "evt_nubank_email",
+    merchant_id: "nubank",
+    source_type: "EMAIL" as const,
+    source_id: "gmail_msg_67890",
+    raw_content: `
+From: Cristina Junqueira <cristina@nubank.com.br>
+To: Ana Silva <ana.silva@yuno.com>
+Subject: Nubank Payment Integration - Additional Requirements
+
+Hi Ana,
+
+Following up on our call yesterday, I wanted to clarify a few points:
+
+1. We're coming from a Merchant of Record setup, so we need a smooth transition
+2. PIX is absolutely critical for us - it's 60% of our transaction volume
+3. We need Open Banking integration for account verification
+4. Expected volume: $120M USD/month
+5. Must comply with BACEN (Brazilian Central Bank) regulations
+6. We're also expanding to Mexico, need SPEI support there
+
+Let me know if you need any additional information.
+
+Best,
+Cristina
+    `,
+    metadata: {
+      from: "cristina@nubank.com.br",
+      to: "ana.silva@yuno.com",
+      subject: "Nubank Payment Integration - Additional Requirements",
+      received_at: "2025-01-12T10:23:00Z",
+    },
+    processing_status: "PROCESSED" as const,
+    processed_at: new Date("2025-01-12T11:00:00Z"),
+  },
+  {
+    id: "evt_mercadolibre_slack",
+    merchant_id: "mercadolibre",
+    source_type: "SLACK" as const,
+    source_id: "slack_msg_abc123",
+    raw_content: `
+#sales-handoffs
+Roberto Mendoza: Just closed Mercado Libre! 🎉
+They want to use our platform for their cross-border payments
+Initial scope: BR, MX, AR, CO, CL
+PSPs: Definitely MercadoPago (their own), and they're open to Adyen for redundancy
+Still need to nail down volume metrics and compliance requirements
+Meeting scheduled for next week to go deeper
+    `,
+    metadata: {
+      channel: "sales-handoffs",
+      thread_ts: "1736683200.123456",
+      author: "Roberto Mendoza",
+    },
+    processing_status: "PENDING" as const,
+    processed_at: null,
+  },
+];
+
+const extractions = [
+  {
+    id: "ext_rappi_countries",
+    inbound_event_id: "evt_rappi_kickoff",
+    merchant_id: "rappi",
+    target_table: "scope_in_doc",
+    target_field: "countries",
+    extracted_value: { value: ["BR", "MX", "CO", "AR", "CL"] },
+    confidence: "HIGH" as const,
+    reasoning:
+      "Explicitly mentioned 'across 5 LATAM countries' and listed Brazil, Mexico, and Colombia as priority countries. Argentina and Chile are standard in LATAM deployments.",
+    status: "AUTO_APPLIED" as const,
+    applied_at: new Date("2025-01-10T16:35:00Z"),
+    reviewed_by: null,
+  },
+  {
+    id: "ext_rappi_volume",
+    inbound_event_id: "evt_rappi_kickoff",
+    merchant_id: "rappi",
+    target_table: "scope_in_doc",
+    target_field: "expected_volume",
+    extracted_value: { value: "$50M USD/month" },
+    confidence: "HIGH" as const,
+    reasoning:
+      "Directly stated 'Current volume: $50M USD/month' in the meeting transcript.",
+    status: "AUTO_APPLIED" as const,
+    applied_at: new Date("2025-01-10T16:35:00Z"),
+    reviewed_by: null,
+  },
+  {
+    id: "ext_nubank_mor",
+    inbound_event_id: "evt_nubank_email",
+    merchant_id: "nubank",
+    target_table: "scope_in_doc",
+    target_field: "comes_from_mor",
+    extracted_value: { value: true },
+    confidence: "HIGH" as const,
+    reasoning:
+      "Email explicitly states 'We're coming from a Merchant of Record setup'.",
+    status: "AUTO_APPLIED" as const,
+    applied_at: new Date("2025-01-12T11:05:00Z"),
+    reviewed_by: null,
+  },
+  {
+    id: "ext_nubank_compliance",
+    inbound_event_id: "evt_nubank_email",
+    merchant_id: "nubank",
+    target_table: "scope_in_doc",
+    target_field: "compliance_requirements",
+    extracted_value: { value: ["PCI-DSS", "LGPD", "BACEN regulations"] },
+    confidence: "HIGH" as const,
+    reasoning:
+      "Email mentions 'Must comply with BACEN (Brazilian Central Bank) regulations'. LGPD and PCI-DSS are standard for Brazilian financial institutions.",
+    status: "AUTO_APPLIED" as const,
+    applied_at: new Date("2025-01-12T11:05:00Z"),
+    reviewed_by: null,
+  },
+  {
+    id: "ext_mercadolibre_countries",
+    inbound_event_id: "evt_mercadolibre_slack",
+    merchant_id: "mercadolibre",
+    target_table: "scope_in_doc",
+    target_field: "countries",
+    extracted_value: { value: ["BR", "MX", "AR", "CO", "CL"] },
+    confidence: "HIGH" as const,
+    reasoning:
+      "Slack message clearly lists 'Initial scope: BR, MX, AR, CO, CL'.",
+    status: "AUTO_APPLIED" as const,
+    applied_at: new Date("2025-01-13T09:15:00Z"),
+    reviewed_by: null,
+  },
+];
+
+const audits = [
+  {
+    id: "audit_rappi_create",
+    merchant_id: "rappi",
+    target_table: "merchant_profile",
+    target_id: "rappi",
+    target_field: null,
+    change_type: "CREATE" as const,
+    old_value: null,
+    new_value: {
+      id: "rappi",
+      name: "Rappi",
+      lifecycle_stage: "SCOPING",
+    },
+    actor_type: "USER" as const,
+    actor_id: "maria_gonzalez",
+    source_type: "MANUAL" as const,
+    source_id: null,
+    reason: "New merchant onboarded from sales pipeline",
+    ai_extraction_id: null,
+  },
+  {
+    id: "audit_rappi_countries",
+    merchant_id: "rappi",
+    target_table: "scope_in_doc",
+    target_id: "rappi_scope",
+    target_field: "countries",
+    change_type: "UPDATE" as const,
+    old_value: [],
+    new_value: ["BR", "MX", "CO", "AR", "CL"],
+    actor_type: "AI" as const,
+    actor_id: null,
+    source_type: "MEETING" as const,
+    source_id: "evt_rappi_kickoff",
+    reason:
+      "AI extracted country list from kickoff meeting transcript. Merchant explicitly mentioned 5 LATAM countries including Brazil, Mexico, and Colombia as priorities.",
+    ai_extraction_id: "ext_rappi_countries",
+  },
+  {
+    id: "audit_rappi_stage_implementing",
+    merchant_id: "rappi",
+    target_table: "merchant_profile",
+    target_id: "rappi",
+    target_field: "lifecycle_stage",
+    change_type: "STAGE_CHANGE" as const,
+    old_value: "SCOPING",
+    new_value: "IMPLEMENTING",
+    actor_type: "USER" as const,
+    actor_id: "carlos_ramirez",
+    source_type: "MANUAL" as const,
+    source_id: null,
+    reason:
+      "Scope verified complete. All required fields validated. Promoted to implementation phase.",
+    ai_extraction_id: null,
+  },
+  {
+    id: "audit_rappi_stage_live",
+    merchant_id: "rappi",
+    target_table: "merchant_profile",
+    target_id: "rappi",
+    target_field: "lifecycle_stage",
+    change_type: "STAGE_CHANGE" as const,
+    old_value: "IMPLEMENTING",
+    new_value: "LIVE",
+    actor_type: "USER" as const,
+    actor_id: "carlos_ramirez",
+    source_type: "MANUAL" as const,
+    source_id: null,
+    reason:
+      "Implementation completed successfully. All PSP integrations tested. Merchant approved for production traffic.",
+    ai_extraction_id: null,
+  },
+  {
+    id: "audit_nubank_mor",
+    merchant_id: "nubank",
+    target_table: "scope_in_doc",
+    target_id: "nubank_scope",
+    target_field: "comes_from_mor",
+    change_type: "UPDATE" as const,
+    old_value: false,
+    new_value: true,
+    actor_type: "AI" as const,
+    actor_id: null,
+    source_type: "EMAIL" as const,
+    source_id: "evt_nubank_email",
+    reason:
+      "AI detected Merchant of Record origin from email. Cristina explicitly stated 'We're coming from a Merchant of Record setup' requiring smooth transition planning.",
+    ai_extraction_id: "ext_nubank_mor",
+  },
+  {
+    id: "audit_nubank_dependencies_manual",
+    merchant_id: "nubank",
+    target_table: "scope_in_doc",
+    target_id: "nubank_scope",
+    target_field: "dependencies",
+    change_type: "UPDATE" as const,
+    old_value: ["Open Banking integration"],
+    new_value: ["Open Banking integration", "PIX QR Code support"],
+    actor_type: "USER" as const,
+    actor_id: "diego_fernandez",
+    source_type: "MANUAL" as const,
+    source_id: null,
+    reason:
+      "Added PIX QR Code as critical dependency after technical review. Required for 60% of transaction volume.",
+    ai_extraction_id: null,
+  },
+];
+
+const attachments = [
+  {
+    id: "attach_rappi_contract",
+    merchant_id: "rappi",
+    filename: "Rappi_MSA_2025.pdf",
+    file_type: "application/pdf",
+    file_size: 2457600,
+    storage_url: "s3://yuno-docs/rappi/contracts/msa_2025.pdf",
+    category: "CONTRACT" as const,
+    description: "Master Service Agreement - Signed January 2025",
+    uploaded_by: "maria_gonzalez",
+  },
+  {
+    id: "attach_rappi_tech_spec",
+    merchant_id: "rappi",
+    filename: "Rappi_Technical_Requirements.pdf",
+    file_type: "application/pdf",
+    file_size: 1048576,
+    storage_url: "s3://yuno-docs/rappi/technical/requirements_v2.pdf",
+    category: "TECHNICAL_DOC" as const,
+    description: "API integration requirements and webhook specifications",
+    uploaded_by: "carlos_ramirez",
+  },
+  {
+    id: "attach_nubank_compliance",
+    merchant_id: "nubank",
+    filename: "Nubank_BACEN_Compliance.pdf",
+    file_type: "application/pdf",
+    file_size: 3145728,
+    storage_url: "s3://yuno-docs/nubank/compliance/bacen_cert.pdf",
+    category: "OTHER" as const,
+    description: "BACEN compliance certification and requirements",
+    uploaded_by: "ana_silva",
+  },
+];
+
 async function seed() {
   try {
     console.log("🌱 Starting database seed...");
 
-    // Insertar procesadores
-    console.log("📦 Inserting payment processors...");
+    // ==========================================
+    // 1. PAYMENT PROCESSORS & COUNTRY FEATURES
+    // ==========================================
+    console.log("\n📦 Inserting payment processors...");
     for (const processor of processors) {
       await db
         .insert(paymentProcessors)
@@ -494,7 +951,6 @@ async function seed() {
     }
     console.log(`✅ Inserted ${processors.length} payment processors`);
 
-    // Insertar características por país
     console.log("🌍 Inserting country-specific features...");
     for (const feature of countryFeatures) {
       await db
@@ -504,114 +960,158 @@ async function seed() {
     }
     console.log(`✅ Inserted ${countryFeatures.length} country features`);
 
-    // Insertar Merchants Enterprise (Rappi, McDonalds, Avianca)
-    const merchants = [
-      {
-        name: "Rappi",
-        contact_email: "payments@rappi.com",
-        status: "active",
-        scope: {
-          integrations: {
-            psps: ["stripe", "adyen", "mercadopago"],
-            countries: ["MX", "CO", "BR", "PE"],
-            paymentMethods: ["credit_card", "debit_card", "pix", "spei", "pse"],
-          },
-          volume_metrics: "$250M USD",
-          aproval_rate: "92.5%",
-          comes_from_mof: false,
-          deal_closed_by: "Juan Pérez",
-        },
-      },
-      {
-        name: "McDonalds",
-        contact_email: "finance@mcdonalds.com",
-        status: "active",
-        scope: {
-          integrations: {
-            psps: ["adyen", "worldpay"],
-            countries: ["BR", "MX", "CO"],
-            paymentMethods: ["credit_card", "debit_card"],
-          },
-          volume_metrics: "$45M USD",
-          aproval_rate: "95.2%",
-          comes_from_mof: true,
-          deal_closed_by: "Global Accounts Team",
-        },
-      },
-      {
-        name: "Avianca",
-        contact_email: "pagos@avianca.com",
-        status: "active",
-        scope: {
-          integrations: {
-            psps: ["dlocal", "stripe", "cybersource"],
-            countries: ["CO", "US", "ES"],
-            paymentMethods: ["credit_card", "pse", "fly_now_pay_later"],
-          },
-          volume_metrics: "$120M USD",
-          aproval_rate: "88.7%",
-          comes_from_mof: false,
-          deal_closed_by: "Maria Rodriguez",
-        },
-      },
-    ];
-
-    console.log("🏪 Inserting enterprise merchants...");
-
-    for (const m of merchants) {
-      const merchant = await db
-        .insert(merchant_profile)
-        .values({
-          name: m.name,
-          contact_email: m.contact_email,
-          status: m.status,
-        })
-        .returning()
-        .onConflictDoNothing();
-
-      let merchantId: number | undefined;
-      if (merchant.length > 0) {
-        merchantId = merchant[0].id;
-      } else {
-        const existing = await db
-          .select()
-          .from(merchant_profile)
-          .where(eq(merchant_profile.contact_email, m.contact_email))
-          .limit(1);
-        merchantId = existing[0]?.id;
-      }
-
-      if (merchantId) {
-        await db
-          .insert(scope_in_doc_info)
-          .values({
-            merchant_profile_id: merchantId,
-            integrations: m.scope.integrations,
-            volume_metrics: m.scope.volume_metrics,
-            aproval_rate: m.scope.aproval_rate,
-            comes_from_mof: m.scope.comes_from_mof,
-            deal_closed_by: m.scope.deal_closed_by,
-          })
-          .onConflictDoNothing();
-        console.log(`✅ Seeded ${m.name}`);
-      }
+    // ==========================================
+    // 2. MERCHANTS
+    // ==========================================
+    console.log("\n🏢 Inserting merchants...");
+    for (const merchant of merchants) {
+      await db.insert(merchantProfile).values(merchant).onConflictDoNothing();
     }
+    console.log(`✅ Inserted ${merchants.length} merchants`);
 
-    console.log("🎉 Database seeded successfully!");
-    console.log("\n📊 Summary:");
-    console.log(`   - ${processors.length} payment processors`);
-    console.log(`   - ${countryFeatures.length} country features`);
-    console.log(`   - Countries covered: BR, MX, CO, AR, CL, US, PE`);
-    console.log(`   - Status breakdown:`);
+    // ==========================================
+    // 3. SCOPE IN DOC
+    // ==========================================
+    console.log("📋 Inserting scope in doc...");
+    for (const scope of scopes) {
+      await db.insert(scopeInDoc).values(scope).onConflictDoNothing();
+    }
+    console.log(`✅ Inserted ${scopes.length} scopes`);
+
+    // ==========================================
+    // 4. INBOUND EVENTS
+    // ==========================================
+    console.log("📥 Inserting inbound events...");
+    for (const event of events) {
+      await db.insert(inboundEvent).values(event).onConflictDoNothing();
+    }
+    console.log(`✅ Inserted ${events.length} inbound events`);
+
+    // ==========================================
+    // 5. AI EXTRACTIONS
+    // ==========================================
+    console.log("🤖 Inserting AI extractions...");
+    for (const extraction of extractions) {
+      await db.insert(aiExtraction).values(extraction).onConflictDoNothing();
+    }
+    console.log(`✅ Inserted ${extractions.length} AI extractions`);
+
+    // ==========================================
+    // 6. AUDIT LOG
+    // ==========================================
+    console.log("📝 Inserting audit log entries...");
+    for (const audit of audits) {
+      await db.insert(auditLog).values(audit).onConflictDoNothing();
+    }
+    console.log(`✅ Inserted ${audits.length} audit log entries`);
+
+    // ==========================================
+    // 7. ATTACHMENTS
+    // ==========================================
+    console.log("📎 Inserting attachments...");
+    for (const attach of attachments) {
+      await db.insert(attachment).values(attach).onConflictDoNothing();
+    }
+    console.log(`✅ Inserted ${attachments.length} attachments`);
+
+    // ==========================================
+    // SUMMARY
+    // ==========================================
+    console.log("\n🎉 Database seeded successfully!");
+    console.log("\n📊 SUMMARY");
+    console.log("═══════════════════════════════════════");
+
+    console.log("\n💳 Payment Infrastructure:");
+    console.log(`   • ${processors.length} payment processors`);
+    console.log(`   • ${countryFeatures.length} country features`);
+    console.log(`   • Countries: BR, MX, CO, AR, CL, US, PE`);
+    console.log("   • Status breakdown:");
     console.log(
-      `     • LIVE: ${processors.filter((p) => p.status === "LIVE").length}`,
+      `     - LIVE: ${processors.filter((p) => p.status === "LIVE").length}`,
     );
     console.log(
-      `     • IN_PROGRESS: ${processors.filter((p) => p.status === "IN_PROGRESS").length}`,
+      `     - IN_PROGRESS: ${processors.filter((p) => p.status === "IN_PROGRESS").length}`,
     );
     console.log(
-      `     • NOT_SUPPORTED: ${processors.filter((p) => p.status === "NOT_SUPPORTED").length}`,
+      `     - NOT_SUPPORTED: ${processors.filter((p) => p.status === "NOT_SUPPORTED").length}`,
     );
+
+    console.log("\n🏢 Merchants:");
+    console.log(`   • ${merchants.length} total merchants`);
+    console.log("   • Lifecycle stages:");
+    console.log(
+      `     - LIVE: ${merchants.filter((m) => m.lifecycle_stage === "LIVE").length} (${merchants
+        .filter((m) => m.lifecycle_stage === "LIVE")
+        .map((m) => m.name)
+        .join(", ")})`,
+    );
+    console.log(
+      `     - IMPLEMENTING: ${merchants.filter((m) => m.lifecycle_stage === "IMPLEMENTING").length} (${merchants
+        .filter((m) => m.lifecycle_stage === "IMPLEMENTING")
+        .map((m) => m.name)
+        .join(", ")})`,
+    );
+    console.log(
+      `     - SCOPING: ${merchants.filter((m) => m.lifecycle_stage === "SCOPING").length} (${merchants
+        .filter((m) => m.lifecycle_stage === "SCOPING")
+        .map((m) => m.name)
+        .join(", ")})`,
+    );
+
+    console.log("\n📋 Scope Completeness:");
+    console.log(`   • Complete: ${scopes.filter((s) => s.is_complete).length}`);
+    console.log(
+      `   • Incomplete: ${scopes.filter((s) => !s.is_complete).length}`,
+    );
+
+    console.log("\n📥 Data Ingestion:");
+    console.log(`   • ${events.length} inbound events`);
+    console.log("   • Sources:");
+    console.log(
+      `     - MEETING: ${events.filter((e) => e.source_type === "MEETING").length}`,
+    );
+    console.log(
+      `     - EMAIL: ${events.filter((e) => e.source_type === "EMAIL").length}`,
+    );
+    console.log(
+      `     - SLACK: ${events.filter((e) => e.source_type === "SLACK").length}`,
+    );
+
+    console.log("\n🤖 AI Activity:");
+    console.log(`   • ${extractions.length} AI extractions`);
+    console.log(
+      `   • ${extractions.filter((e) => e.status === "AUTO_APPLIED").length} auto-applied changes`,
+    );
+    console.log("   • High confidence extractions:");
+    console.log(
+      `     ${extractions.filter((e) => e.confidence === "HIGH").length}/${extractions.length}`,
+    );
+
+    console.log("\n📝 Audit Trail:");
+    console.log(`   • ${audits.length} audit log entries`);
+    console.log("   • Actor breakdown:");
+    console.log(
+      `     - AI: ${audits.filter((a) => a.actor_type === "AI").length}`,
+    );
+    console.log(
+      `     - USER: ${audits.filter((a) => a.actor_type === "USER").length}`,
+    );
+
+    console.log("\n📎 Attachments:");
+    console.log(`   • ${attachments.length} files`);
+    console.log("   • Categories:");
+    console.log(
+      `     - CONTRACT: ${attachments.filter((a) => a.category === "CONTRACT").length}`,
+    );
+    console.log(
+      `     - TECHNICAL_DOC: ${attachments.filter((a) => a.category === "TECHNICAL_DOC").length}`,
+    );
+    console.log(
+      `     - OTHER: ${attachments.filter((a) => a.category === "OTHER").length}`,
+    );
+
+    console.log("\n═══════════════════════════════════════");
+    console.log("✨ Ready to go! Run your dev server.\n");
 
     process.exit(0);
   } catch (error) {
