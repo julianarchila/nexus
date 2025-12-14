@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { TRPCReactProvider } from "@/lib/trpc/client";
 import "./globals.css";
+import { TanStackDevtools } from "@tanstack/react-devtools";
+import { ReactQueryDevtoolsPanel } from "@tanstack/react-query-devtools";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -27,7 +30,18 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <TRPCReactProvider>
+          {children}
+          <TanStackDevtools
+            plugins={[
+              {
+                name: "TanStack Query",
+                render: <ReactQueryDevtoolsPanel />,
+                defaultOpen: true,
+              },
+            ]}
+          />
+        </TRPCReactProvider>
       </body>
     </html>
   );

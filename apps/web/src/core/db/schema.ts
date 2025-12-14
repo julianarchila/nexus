@@ -1,4 +1,12 @@
-import { pgTable, text, boolean, jsonb, timestamp } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  text,
+  boolean,
+  jsonb,
+  timestamp,
+  serial,
+} from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
 
 // 🧾 Tabla principal de procesadores de pagos
 export const paymentProcessors = pgTable("payment_processors", {
@@ -24,7 +32,7 @@ export const paymentProcessors = pgTable("payment_processors", {
   updated_at: timestamp("updated_at").defaultNow().notNull(),
 });
 
-// 📍 Capacidades por país (verdad operativa)
+//  Capacidades por país (verdad operativa)
 export const countryProcessorFeatures = pgTable("country_processor_features", {
   id: text("id").primaryKey(),
 
@@ -53,3 +61,59 @@ export const countryProcessorFeatures = pgTable("country_processor_features", {
   created_at: timestamp("created_at").defaultNow().notNull(),
   updated_at: timestamp("updated_at").defaultNow().notNull(),
 });
+
+export const merchant_profile = pgTable("merchant_profile", {
+  id: serial("id").primaryKey(),
+
+  name: text("name").notNull(),
+
+  status: text("status").notNull(), //
+});
+
+export const scope_in_doc_info = pgTable("scope_in_doc_info", {
+  id: serial("id").primaryKey(),
+  merchant_profile_id: serial("merchant_profile_id").references(
+    () => merchant_profile.id,
+  ),
+
+  integrations: jsonb("integrations").default("{}"),
+  volume_metrics: text("volume_metrics"),
+  aproval_rate: text("aproval_rate"),
+  comes_from_mof: boolean("comes_from_mof").notNull().default(false),
+  deal_closed_by: text("deal_closed_by"),
+});
+
+// Relations
+export const paymentProcessorsRelations = relations(
+  paymentProcessors,
+  ({ many }) => ({
+    countryFeatures: many(countryProcessorFeatures),
+  }),
+);
+
+export const countryProcessorFeaturesRelations = relations(
+  countryProcessorFeatures,
+  ({ one }) => ({
+    processor: one(paymentProcessors, {
+      fields: [countryProcessorFeatures.processor_id],
+      references: [paymentProcessors.id],
+    }),
+  }),
+);
+
+export const merchantProfileRelations = relations(
+  merchant_profile,
+  ({ many }) => ({
+    scopeInDocInfos: many(scope_in_doc_info),
+  }),
+);
+
+export const scopeInDocInfoRelations = relations(
+  scope_in_doc_info,
+  ({ one }) => ({
+    merchantProfile: one(merchant_profile, {
+      fields: [scope_in_doc_info.merchant_profile_id],
+      references: [merchant_profile.id],
+    }),
+  }),
+);

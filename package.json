@@ -12,11 +12,17 @@
     "dev:desktop": "turbo run dev --filter=@nexus/desktop",
     "build": "turbo run build",
     "lint": "biome check",
-    "format": "biome format --write"
+    "format": "biome format --write",
+    "db": "bun run --filter=@nexus/web db"
   },
   "devDependencies": {
     "@biomejs/biome": "2.2.0",
     "turbo": "^2.6.3",
     "typescript": "^5"
+  },
+  "dependencies": {
+    "@tanstack/devtools-vite": "^0.3.12",
+    "@tanstack/react-devtools": "^0.8.4",
+    "@tanstack/react-query-devtools": "^5.91.1"
   }
 }
