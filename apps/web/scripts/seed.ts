@@ -6,7 +6,9 @@ import {
   auditLog,
   countryProcessorFeatures,
   inboundEvent,
+  merchantPaymentMethodImplementation,
   merchantProfile,
+  merchantPspImplementation,
   paymentProcessors,
   scopeInDoc,
 } from "../src/core/db/schema";
@@ -1241,6 +1243,119 @@ const attachments = [
   },
 ];
 
+// ===========================================
+// PSP IMPLEMENTATIONS (for IMPLEMENTING merchants)
+// ===========================================
+
+const pspImplementations = [
+  // Open English PSP implementations
+  {
+    id: "psp_impl_openenglish_stripe",
+    merchant_id: "openenglish",
+    processor_id: "stripe",
+    status: "IN_PROGRESS" as const,
+    platform_supported: true,
+    started_at: new Date("2025-01-20"),
+  },
+  {
+    id: "psp_impl_openenglish_mercadopago",
+    merchant_id: "openenglish",
+    processor_id: "mercadopago",
+    status: "PENDING" as const,
+    platform_supported: true,
+  },
+  // inDrive PSP implementations
+  {
+    id: "psp_impl_indrive_stripe",
+    merchant_id: "indrive",
+    processor_id: "stripe",
+    status: "IN_PROGRESS" as const,
+    platform_supported: true,
+    started_at: new Date("2025-01-18"),
+  },
+  {
+    id: "psp_impl_indrive_dlocal",
+    merchant_id: "indrive",
+    processor_id: "dlocal",
+    status: "PENDING" as const,
+    platform_supported: true,
+  },
+  {
+    id: "psp_impl_indrive_mercadopago",
+    merchant_id: "indrive",
+    processor_id: "mercadopago",
+    status: "PENDING" as const,
+    platform_supported: true,
+  },
+];
+
+// ===========================================
+// PAYMENT METHOD IMPLEMENTATIONS (for IMPLEMENTING merchants)
+// ===========================================
+
+const paymentMethodImplementations = [
+  // Open English payment method implementations
+  {
+    id: "pm_impl_openenglish_credit_card",
+    merchant_id: "openenglish",
+    payment_method: "credit_card",
+    status: "IN_PROGRESS" as const,
+    platform_supported: true,
+    started_at: new Date("2025-01-20"),
+  },
+  {
+    id: "pm_impl_openenglish_debit_card",
+    merchant_id: "openenglish",
+    payment_method: "debit_card",
+    status: "PENDING" as const,
+    platform_supported: true,
+  },
+  {
+    id: "pm_impl_openenglish_pix",
+    merchant_id: "openenglish",
+    payment_method: "pix",
+    status: "PENDING" as const,
+    platform_supported: true,
+  },
+  {
+    id: "pm_impl_openenglish_boleto",
+    merchant_id: "openenglish",
+    payment_method: "boleto_bancario",
+    status: "PENDING" as const,
+    platform_supported: true,
+  },
+  // inDrive payment method implementations
+  {
+    id: "pm_impl_indrive_credit_card",
+    merchant_id: "indrive",
+    payment_method: "credit_card",
+    status: "IN_PROGRESS" as const,
+    platform_supported: true,
+    started_at: new Date("2025-01-18"),
+  },
+  {
+    id: "pm_impl_indrive_pix",
+    merchant_id: "indrive",
+    payment_method: "pix",
+    status: "PENDING" as const,
+    platform_supported: true,
+  },
+  {
+    id: "pm_impl_indrive_oxxo",
+    merchant_id: "indrive",
+    payment_method: "oxxo",
+    status: "PENDING" as const,
+    platform_supported: true,
+  },
+  {
+    id: "pm_impl_indrive_yape",
+    merchant_id: "indrive",
+    payment_method: "yape",
+    status: "PENDING" as const,
+    platform_supported: true,
+  },
+];
+
 async function seed() {
   try {
     console.log("🌱 Starting database seed...");
@@ -1319,6 +1434,32 @@ async function seed() {
       await db.insert(attachment).values(attach).onConflictDoNothing();
     }
     console.log(`✅ Inserted ${attachments.length} attachments`);
+
+    // ==========================================
+    // 8. PSP IMPLEMENTATIONS
+    // ==========================================
+    console.log("🔧 Inserting PSP implementations...");
+    for (const impl of pspImplementations) {
+      await db
+        .insert(merchantPspImplementation)
+        .values(impl)
+        .onConflictDoNothing();
+    }
+    console.log(`✅ Inserted ${pspImplementations.length} PSP implementations`);
+
+    // ==========================================
+    // 9. PAYMENT METHOD IMPLEMENTATIONS
+    // ==========================================
+    console.log("💳 Inserting payment method implementations...");
+    for (const impl of paymentMethodImplementations) {
+      await db
+        .insert(merchantPaymentMethodImplementation)
+        .values(impl)
+        .onConflictDoNothing();
+    }
+    console.log(
+      `✅ Inserted ${paymentMethodImplementations.length} payment method implementations`,
+    );
 
     // ==========================================
     // SUMMARY
@@ -1411,6 +1552,19 @@ async function seed() {
     );
     console.log(
       `     - TECHNICAL_DOC: ${attachments.filter((a) => a.category === "TECHNICAL_DOC").length}`,
+    );
+
+    console.log("\n🔧 Implementation Tracker:");
+    console.log(`   • ${pspImplementations.length} PSP implementations`);
+    console.log(
+      `   • ${paymentMethodImplementations.length} payment method implementations`,
+    );
+    console.log("   • PSP status breakdown:");
+    console.log(
+      `     - IN_PROGRESS: ${pspImplementations.filter((p) => p.status === "IN_PROGRESS").length}`,
+    );
+    console.log(
+      `     - PENDING: ${pspImplementations.filter((p) => p.status === "PENDING").length}`,
     );
 
     console.log("\n═══════════════════════════════════════");
