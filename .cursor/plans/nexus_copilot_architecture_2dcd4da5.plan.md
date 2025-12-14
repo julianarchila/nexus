@@ -4,7 +4,12 @@ overview: Design and implementation plan for a real-time desktop Copilot that li
 todos:
   - id: electron-audio
     content: Implement system audio capture in Electron using desktopCapturer
-    status: pending
+    status: completed
+  - id: electron-ui
+    content: Build React UI for session management, live transcript, and alerts
+    status: in_progress
+    dependencies:
+      - electron-audio
   - id: websocket-server
     content: Set up WebSocket server in Next.js with session management
     status: pending
@@ -27,11 +32,6 @@ todos:
     dependencies:
       - claim-extractor
       - db-schema
-  - id: electron-ui
-    content: Build React UI for session management, live transcript, and alerts
-    status: pending
-    dependencies:
-      - electron-audio
   - id: e2e-pipeline
     content: Integrate full audio-to-insights pipeline end-to-end
     status: pending
@@ -54,6 +54,43 @@ todos:
 ---
 
 # Nexus Real-Time Copilot Implementation Plan
+
+## Current Implementation Status
+
+**Last Updated:** December 2024
+
+### Completed
+
+- **Electron Desktop App** (`apps/desktop/`)
+  - Main process with IPC handlers for audio capture, permissions, window controls (`src/main/ipc.ts`)
+  - Preload bridge exposing typed APIs to renderer (`src/preload/index.ts`)
+  - React 18 renderer with electron-vite bundler
+  - System audio capture via `desktopCapturer` + microphone mixing (`useAudioCapture` hook)
+  - Real-time audio level monitoring (system, mic, mixed)
+  - MediaRecorder with WebM Opus encoding
+  - Audio file save to disk functionality
+  - macOS Screen Recording permission handling
+  - Shared types with IPC channel constants (`src/shared/types.ts`)
+
+### In Progress
+
+- **Electron UI** - Basic components exist (AudioCapture, TitleBar, SystemInfo), but missing:
+  - Session/merchant selection UI
+  - Live transcript panel
+  - Alerts/insights panel
+  - WebSocket client for backend connectivity
+
+### Not Started
+
+- WebSocket server in Next.js backend
+- Whisper transcription service
+- Database schema for sessions/claims/alerts
+- Claim extraction LLM service
+- Capability matching service
+- Linear integration
+- Audio chunking for streaming
+
+---
 
 ## 1. System Architecture Overview
 
@@ -123,19 +160,33 @@ The system follows a **streaming pipeline architecture**:
 
 ### Key Files to Modify/Create
 
-| File | Purpose |
+| File | Purpose | Status |
 
-|------|---------|
+|------|---------|--------|
 
-| [`apps/desktop/main.js`](apps/desktop/main.js) | Add audio capture permissions, IPC handlers |
+| `apps/desktop/src/main/index.ts` | App entry, window creation, handler registration | **Done** |
 
-| `apps/desktop/src/audio/capture.ts` | System audio capture logic |
+| `apps/desktop/src/main/ipc.ts` | IPC handlers for audio, window, app APIs | **Done** |
 
-| `apps/desktop/src/audio/chunker.ts` | Audio segmentation for streaming |
+| `apps/desktop/src/main/window.ts` | Window configuration | **Done** |
 
-| `apps/desktop/src/services/websocket.ts` | WebSocket client with reconnection |
+| `apps/desktop/src/preload/index.ts` | Context bridge API exposure | **Done** |
 
-| `apps/desktop/src/components/` | React components for UI |
+| `apps/desktop/src/shared/types.ts` | Shared types and IPC channel constants | **Done** |
+
+| `apps/desktop/src/renderer/src/hooks/useAudioCapture.ts` | Audio capture hook with mixing | **Done** |
+
+| `apps/desktop/src/renderer/src/components/AudioCapture.tsx` | Audio capture UI component | **Done** |
+
+| `apps/desktop/src/audio/chunker.ts` | Audio segmentation for streaming | Pending |
+
+| `apps/desktop/src/services/websocket.ts` | WebSocket client with reconnection | Pending |
+
+| `apps/desktop/src/components/SessionManager.tsx` | Session/merchant selection UI | Pending |
+
+| `apps/desktop/src/components/TranscriptPanel.tsx` | Live transcript display | Pending |
+
+| `apps/desktop/src/components/AlertsPanel.tsx` | Real-time alerts display | Pending |
 
 ### Audio Capture Flow
 
@@ -157,7 +208,15 @@ sequenceDiagram
 
 ### Migration to React
 
-The current vanilla HTML/JS renderer should be migrated to React for component-based UI. Use Vite as the bundler for the renderer process.
+~~The current vanilla HTML/JS renderer should be migrated to React for component-based UI. Use Vite as the bundler for the renderer process.~~
+
+**Status: COMPLETE** - The renderer is now a React 18 application using electron-vite with:
+
+- TypeScript throughout
+- Vite bundler (`electron.vite.config.ts`)
+- Component structure in `apps/desktop/src/renderer/src/components/`
+- Hooks in `apps/desktop/src/renderer/src/hooks/`
+- CSS styles in `apps/desktop/src/renderer/src/assets/styles/`
 
 ---
 
@@ -499,7 +558,9 @@ export async function transcribeAudio(
 
 ### Phase 1: Foundation (Week 1-2)
 
-- [ ] **Electron audio capture**: Implement system audio capture using `desktopCapturer`
+- [x] **Electron audio capture**: Implement system audio capture using `desktopCapturer`
+- [x] **React UI setup**: Migrate renderer to React with electron-vite
+- [x] **Audio mixing**: System audio + microphone mixing with level monitoring
 - [ ] **WebSocket infrastructure**: Set up server and client with reconnection logic
 - [ ] **Whisper integration**: Basic transcription pipeline
 - [ ] **Database schema**: Extend schema, run migrations

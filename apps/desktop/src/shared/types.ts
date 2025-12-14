@@ -74,3 +74,83 @@ export interface AppVersions {
   chrome: string;
   electron: string;
 }
+
+/**
+ * WebSocket connection status
+ */
+export type WebSocketStatus =
+  | "disconnected"
+  | "connecting"
+  | "connected"
+  | "error";
+
+/**
+ * WebSocket message types (client -> server)
+ */
+export interface AudioChunkMessage {
+  type: "AUDIO_CHUNK";
+  data: string; // base64 encoded audio
+  sequence: number;
+  timestamp: number;
+  duration: number;
+}
+
+export interface EndSessionMessage {
+  type: "END_SESSION";
+  timestamp: number;
+}
+
+export interface PingMessage {
+  type: "PING";
+  timestamp: number;
+}
+
+export type ClientMessage = AudioChunkMessage | EndSessionMessage | PingMessage;
+
+/**
+ * WebSocket message types (server -> client)
+ */
+export interface SessionStartedMessage {
+  type: "SESSION_STARTED";
+  sessionId: string;
+  timestamp: number;
+}
+
+export interface ChunkReceivedMessage {
+  type: "CHUNK_RECEIVED";
+  sequence: number;
+  totalChunks: number;
+  timestamp: number;
+}
+
+export interface SessionEndedMessage {
+  type: "SESSION_ENDED";
+  sessionId: string;
+  result: {
+    success: boolean;
+    filePath?: string;
+    totalChunks: number;
+    totalDuration: number;
+    fileSize?: number;
+    error?: string;
+  };
+  timestamp: number;
+}
+
+export interface ErrorMessage {
+  type: "ERROR";
+  error: string;
+  timestamp: number;
+}
+
+export interface PongMessage {
+  type: "PONG";
+  timestamp: number;
+}
+
+export type ServerMessage =
+  | SessionStartedMessage
+  | ChunkReceivedMessage
+  | SessionEndedMessage
+  | ErrorMessage
+  | PongMessage;

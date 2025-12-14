@@ -1,25 +1,69 @@
 import { useCallback, useEffect, useState } from "react";
 
-import type { ScreenPermissionResult } from "../../../shared/types";
+import type {
+  ScreenPermissionResult,
+  WebSocketStatus,
+} from "../../../shared/types";
 import { useAudioCapture } from "../hooks/useAudioCapture";
+import { useWebSocket } from "../hooks/useWebSocket";
+
+const WS_URL = "ws://localhost:3000/ws";
 
 function AudioCapture() {
   const [permissionStatus, setPermissionStatus] =
     useState<ScreenPermissionResult["status"]>("not-determined");
   const [microphones, setMicrophones] = useState<MediaDeviceInfo[]>([]);
   const [selectedMicId, setSelectedMicId] = useState<string>("");
+  const [streamToServer, setStreamToServer] = useState(true);
+  const [serverFilePath, setServerFilePath] = useState<string | null>(null);
 
+  // WebSocket connection
+  const {
+    status: wsStatus,
+    sessionId,
+    chunksReceived,
+    connect,
+    disconnect,
+    sendAudioChunk,
+    endSession,
+  } = useWebSocket({
+    url: WS_URL,
+    onSessionStarted: (msg) => {
+      console.log("Session started:", msg.sessionId);
+    },
+    onSessionEnded: (msg) => {
+      console.log("Session ended:", msg.result);
+      if (msg.result.success && msg.result.filePath) {
+        setServerFilePath(msg.result.filePath);
+      }
+    },
+    onError: (error) => {
+      console.error("WebSocket error:", error);
+    },
+  });
+
+  // Audio capture with streaming callback
   const {
     isRecording,
     duration,
     systemLevel,
     micLevel,
     mixedLevel,
+    chunksSent,
     startCapture,
     stopCapture,
     saveAudio,
     canSave,
-  } = useAudioCapture({ selectedMicId });
+  } = useAudioCapture({
+    selectedMicId,
+    chunkDurationMs: 1000,
+    onAudioChunk:
+      streamToServer && wsStatus === "connected"
+        ? (chunk) => {
+            sendAudioChunk(chunk.data, chunk.sequence, chunk.duration);
+          }
+        : undefined,
+  });
 
   // Check permissions on mount
   useEffect(() => {
@@ -31,7 +75,6 @@ function AudioCapture() {
   // Enumerate microphones
   const loadMicrophones = useCallback(async () => {
     try {
-      // Request permission first to get device labels
       const tempStream = await navigator.mediaDevices.getUserMedia({
         audio: true,
       });
@@ -59,6 +102,36 @@ function AudioCapture() {
     return `${mins}:${secs}`;
   };
 
+  const handleStartCapture = async () => {
+    setServerFilePath(null);
+    if (streamToServer && wsStatus !== "connected") {
+      connect();
+      // Wait a bit for connection
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+    startCapture();
+  };
+
+  const handleStopCapture = () => {
+    stopCapture();
+    if (streamToServer && wsStatus === "connected") {
+      endSession();
+    }
+  };
+
+  const getWsStatusColor = (status: WebSocketStatus): string => {
+    switch (status) {
+      case "connected":
+        return "#22c55e";
+      case "connecting":
+        return "#eab308";
+      case "error":
+        return "#ef4444";
+      default:
+        return "#6b7280";
+    }
+  };
+
   return (
     <section className="content-card">
       <h2>Audio Capture</h2>
@@ -66,6 +139,69 @@ function AudioCapture() {
       {/* Permission status */}
       <div className={`permission-status permission-${permissionStatus}`}>
         Screen recording: {permissionStatus}
+      </div>
+
+      {/* WebSocket status */}
+      <div className="ws-status" style={{ marginBottom: "12px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <div
+            style={{
+              width: "8px",
+              height: "8px",
+              borderRadius: "50%",
+              backgroundColor: getWsStatusColor(wsStatus),
+            }}
+          />
+          <span style={{ fontSize: "12px", color: "#9ca3af" }}>
+            Server: {wsStatus}
+            {sessionId && ` (${sessionId.slice(0, 20)}...)`}
+          </span>
+        </div>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            marginTop: "4px",
+          }}
+        >
+          <label style={{ fontSize: "12px", color: "#9ca3af" }}>
+            <input
+              type="checkbox"
+              checked={streamToServer}
+              onChange={(e) => setStreamToServer(e.target.checked)}
+              disabled={isRecording}
+              style={{ marginRight: "4px" }}
+            />
+            Stream to server
+          </label>
+          {wsStatus !== "connected" && streamToServer && !isRecording && (
+            <button
+              type="button"
+              onClick={connect}
+              style={{
+                fontSize: "12px",
+                padding: "2px 8px",
+                cursor: "pointer",
+              }}
+            >
+              Connect
+            </button>
+          )}
+          {wsStatus === "connected" && !isRecording && (
+            <button
+              type="button"
+              onClick={disconnect}
+              style={{
+                fontSize: "12px",
+                padding: "2px 8px",
+                cursor: "pointer",
+              }}
+            >
+              Disconnect
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Microphone picker */}
@@ -105,7 +241,7 @@ function AudioCapture() {
         <button
           type="button"
           className="btn btn-primary"
-          onClick={startCapture}
+          onClick={handleStartCapture}
           disabled={isRecording}
         >
           Start Capture
@@ -113,7 +249,7 @@ function AudioCapture() {
         <button
           type="button"
           className="btn btn-danger"
-          onClick={stopCapture}
+          onClick={handleStopCapture}
           disabled={!isRecording}
         >
           Stop Capture
@@ -124,7 +260,7 @@ function AudioCapture() {
           onClick={saveAudio}
           disabled={!canSave}
         >
-          Save Audio
+          Save Locally
         </button>
       </div>
 
@@ -136,6 +272,27 @@ function AudioCapture() {
           {isRecording ? "Recording..." : "Ready to capture"}
         </span>
       </div>
+
+      {/* Streaming status */}
+      {streamToServer && (isRecording || chunksSent > 0) && (
+        <div style={{ fontSize: "12px", color: "#9ca3af", marginTop: "8px" }}>
+          Chunks: {chunksSent} sent / {chunksReceived} received
+        </div>
+      )}
+
+      {/* Server file path */}
+      {serverFilePath && (
+        <div
+          style={{
+            fontSize: "12px",
+            color: "#22c55e",
+            marginTop: "8px",
+            wordBreak: "break-all",
+          }}
+        >
+          Saved on server: {serverFilePath}
+        </div>
+      )}
 
       {/* Audio level meters */}
       <div className="audio-levels-container">

@@ -2,6 +2,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 interface UseAudioCaptureOptions {
   selectedMicId?: string;
+  chunkDurationMs?: number; // Duration of each chunk in ms (default 1000)
+  onAudioChunk?: (chunk: {
+    data: string;
+    sequence: number;
+    duration: number;
+  }) => void;
 }
 
 interface UseAudioCaptureReturn {
@@ -10,6 +16,7 @@ interface UseAudioCaptureReturn {
   systemLevel: number;
   micLevel: number;
   mixedLevel: number;
+  chunksSent: number;
   startCapture: () => Promise<void>;
   stopCapture: () => void;
   saveAudio: () => Promise<void>;
@@ -27,6 +34,7 @@ interface AudioRefs {
   systemAnalyser: AnalyserNode | null;
   micAnalyser: AnalyserNode | null;
   mixedAnalyser: AnalyserNode | null;
+  chunkSequence: number;
 }
 
 // Pure utility functions (outside hook)
@@ -64,6 +72,8 @@ function generateFilename(): string {
 
 export function useAudioCapture({
   selectedMicId,
+  chunkDurationMs = 1000,
+  onAudioChunk,
 }: UseAudioCaptureOptions): UseAudioCaptureReturn {
   const [isRecording, setIsRecording] = useState(false);
   const [duration, setDuration] = useState(0);
@@ -71,6 +81,7 @@ export function useAudioCapture({
   const [micLevel, setMicLevel] = useState(0);
   const [mixedLevel, setMixedLevel] = useState(0);
   const [canSave, setCanSave] = useState(false);
+  const [chunksSent, setChunksSent] = useState(0);
 
   const refs = useRef<AudioRefs>({
     audioContext: null,
@@ -83,7 +94,14 @@ export function useAudioCapture({
     systemAnalyser: null,
     micAnalyser: null,
     mixedAnalyser: null,
+    chunkSequence: 0,
   });
+
+  // Store callback in ref to avoid dependency issues
+  const onAudioChunkRef = useRef(onAudioChunk);
+  useEffect(() => {
+    onAudioChunkRef.current = onAudioChunk;
+  }, [onAudioChunk]);
 
   const cleanup = useCallback(() => {
     const r = refs.current;
@@ -169,6 +187,8 @@ export function useAudioCapture({
     if (isRecording) return;
 
     const r = refs.current;
+    r.chunkSequence = 0;
+    setChunksSent(0);
 
     try {
       const audioContext = new AudioContext();
@@ -282,9 +302,26 @@ export function useAudioCapture({
       r.mediaRecorder = mediaRecorder;
       r.audioChunks = [];
 
-      mediaRecorder.ondataavailable = (event) => {
+      mediaRecorder.ondataavailable = async (event) => {
         if (event.data.size > 0) {
           r.audioChunks.push(event.data);
+
+          // Stream chunk via callback if provided
+          if (onAudioChunkRef.current) {
+            try {
+              const base64 = await blobToBase64(event.data);
+              const sequence = r.chunkSequence++;
+              setChunksSent(sequence + 1);
+
+              onAudioChunkRef.current({
+                data: base64,
+                sequence,
+                duration: chunkDurationMs,
+              });
+            } catch (error) {
+              console.error("Error sending audio chunk:", error);
+            }
+          }
         }
       };
 
@@ -300,7 +337,7 @@ export function useAudioCapture({
         stopDurationTimer();
       };
 
-      mediaRecorder.start(1000);
+      mediaRecorder.start(chunkDurationMs);
     } catch (error) {
       console.error("Error starting audio capture:", error);
       cleanup();
@@ -308,6 +345,7 @@ export function useAudioCapture({
   }, [
     isRecording,
     selectedMicId,
+    chunkDurationMs,
     cleanup,
     startLevelMonitoring,
     startDurationTimer,
@@ -354,6 +392,7 @@ export function useAudioCapture({
     systemLevel,
     micLevel,
     mixedLevel,
+    chunksSent,
     startCapture,
     stopCapture,
     saveAudio,
