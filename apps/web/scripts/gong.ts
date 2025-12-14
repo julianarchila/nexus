@@ -3,7 +3,21 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { eq } from "drizzle-orm";
 import { merchantProfile, scopeInDoc } from "../src/core/db/schema";
 import { inngest } from "../src/lib/inngest";
-import type { GongReceivedPayload } from "../src/core/ingestion/events";
+
+// Type definition for Gong webhook payload
+interface GongReceivedPayload {
+  callId: string;
+  title: string;
+  transcript: string;
+  parties: Array<{
+    affiliation: "External" | "Internal";
+    emailAddress: string;
+    name: string;
+    title?: string;
+  }>;
+  duration: number;
+  recordedAt: string;
+}
 
 const db = drizzle({
   connection: {

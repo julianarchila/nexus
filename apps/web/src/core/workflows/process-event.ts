@@ -6,8 +6,11 @@ import { nanoid } from "nanoid";
 import {
   getInboundEvent,
   updateInboundEventStatus,
-} from "../services/inbound-event.repo";
-import { extractFromContent, type CurrentScope } from "../services/extractor";
+} from "@/core/repositories/inbound-event.repo";
+import {
+  extractFromContent,
+  type CurrentScope,
+} from "@/core/integrations/ai/extractor";
 
 /**
  * Inngest function: Processes inbound events

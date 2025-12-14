@@ -21,7 +21,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { LifecycleStage } from "@/core/db/schema";
-import { getScopeFieldLabel } from "@/core/services/pipeline/scope-readiness";
+import { getScopeFieldLabel } from "@/core/domain/scope/scope-readiness";
 import { useTRPC } from "@/lib/trpc/client";
 
 interface StageTransitionModalProps {

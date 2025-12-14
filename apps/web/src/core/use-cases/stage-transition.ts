@@ -10,17 +10,17 @@ import {
   stageTransition,
   type TransitionWarning,
 } from "@/core/db/schema";
-import { createAuditLog } from "@/core/services/audit/audit-logger";
-import { calculateImplementationReadiness } from "./implementation-readiness";
+import { createAuditLog } from "@/core/repositories/audit-log.repo";
+import { calculateImplementationReadiness } from "@/core/services/implementation-readiness.service";
 import {
   checkPlatformSupport,
   isPaymentMethodSupported,
   isPspSupported,
-} from "./platform-support-checker";
+} from "@/core/services/platform-support.service";
 import {
   calculateScopeReadiness,
   type ScopeReadinessResult,
-} from "./scope-readiness";
+} from "@/core/domain/scope/scope-readiness";
 
 /**
  * Stage Transition Service

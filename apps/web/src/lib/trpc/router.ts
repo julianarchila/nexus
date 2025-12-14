@@ -19,14 +19,14 @@ import {
   stageTransition,
 } from "@/core/db/schema";
 import {
-  calculateImplementationReadiness,
-  calculateScopeReadiness,
   previewTransitionToImplementing,
   previewTransitionToLive,
   transitionToImplementing,
   transitionToLive,
-} from "@/core/services/pipeline";
-import { createAuditLog } from "@/core/services/audit/audit-logger";
+} from "@/core/use-cases/stage-transition";
+import { calculateImplementationReadiness } from "@/core/services/implementation-readiness.service";
+import { calculateScopeReadiness } from "@/core/domain/scope/scope-readiness";
+import { createAuditLog } from "@/core/repositories/audit-log.repo";
 import { publicProcedure, router } from "./init";
 
 // ===========================================

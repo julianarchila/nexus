@@ -5,7 +5,7 @@ import {
   gmailAdapter,
   processEvent,
   applyExtraction,
-} from "@/core/ingestion";
+} from "@/core/workflows";
 
 export const { GET, POST, PUT } = serve({
   client: inngest,

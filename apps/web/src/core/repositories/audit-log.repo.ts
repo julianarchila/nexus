@@ -1,11 +1,11 @@
+import { nanoid } from "nanoid";
 import { db } from "@/core/db/client";
 import {
-  auditLog,
   type ActorType,
+  auditLog,
   type ChangeType,
   type SourceType,
 } from "@/core/db/schema";
-import { nanoid } from "nanoid";
 
 export interface AuditLogEntry {
   merchantId: string;

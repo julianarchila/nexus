@@ -2,7 +2,7 @@ import { db } from "@/core/db/client";
 import { inboundEvent, type ProcessingStatus } from "@/core/db/schema";
 import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
-import type { NormalizedInboundEvent } from "../adapters/types";
+import type { NormalizedInboundEvent } from "@/core/workflows/adapters/types";
 
 /**
  * Creates a new inbound event record in the database

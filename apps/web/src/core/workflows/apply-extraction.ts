@@ -2,8 +2,8 @@ import { inngest } from "@/lib/inngest";
 import { db } from "@/core/db/client";
 import { aiExtraction, inboundEvent, scopeInDoc } from "@/core/db/schema";
 import { eq, inArray } from "drizzle-orm";
-import { applyExtractionToScope } from "../services/applicator";
-import { createAuditLog } from "@/core/services/audit/audit-logger";
+import { applyExtractionToScope } from "@/core/services/scope-applicator.service";
+import { createAuditLog } from "@/core/repositories/audit-log.repo";
 
 /**
  * Inngest function: Applies AI extractions to scope_in_doc

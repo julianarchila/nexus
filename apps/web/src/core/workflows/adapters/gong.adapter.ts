@@ -1,14 +1,13 @@
 import { inngest } from "@/lib/inngest";
-import type { GongReceivedPayload } from "../events";
 import type { NormalizedInboundEvent } from "./types";
-import { resolveMerchant } from "../services/merchant-resolver";
-import { createInboundEvent } from "../services/inbound-event.repo";
+import { resolveMerchant } from "@/core/services/merchant-resolver.service";
+import { createInboundEvent } from "@/core/repositories/inbound-event.repo";
 
 /**
  * Extracts the external party's email from Gong meeting parties
  */
 function getExternalContactEmail(
-  parties: GongReceivedPayload["parties"],
+  parties: Array<{ affiliation?: string; emailAddress?: string }>,
 ): string | null {
   const externalParty = parties.find((p) => p.affiliation === "External");
   return externalParty?.emailAddress ?? null;
@@ -59,7 +58,7 @@ export const gongAdapter = inngest.createFunction(
       rawContent: transcript,
       metadata: {
         title,
-        parties: parties.map((p: GongReceivedPayload["parties"][number]) => ({
+        parties: parties.map((p: any) => ({
           name: p.name,
           email: p.emailAddress,
           affiliation: p.affiliation,

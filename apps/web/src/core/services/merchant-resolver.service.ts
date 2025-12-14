@@ -1,7 +1,7 @@
 import { db } from "@/core/db/client";
 import { merchantProfile } from "@/core/db/schema";
 import { eq, ilike } from "drizzle-orm";
-import type { MerchantHints } from "../adapters/types";
+import type { MerchantHints } from "@/core/workflows/adapters/types";
 
 export interface ResolvedMerchant {
   id: string;
@@ -65,7 +65,9 @@ class EmailStrategy implements MerchantResolutionStrategy {
     // Normalizar el email para búsqueda case-insensitive
     const normalizedEmail = normalizeEmail(hints.email);
 
-    console.log(`[MerchantResolver] Buscando merchant con email: ${normalizedEmail}`);
+    console.log(
+      `[MerchantResolver] Buscando merchant con email: ${normalizedEmail}`,
+    );
 
     // Buscar merchant donde el contact_email coincida (case-insensitive)
     const [merchant] = await db
@@ -75,11 +77,15 @@ class EmailStrategy implements MerchantResolutionStrategy {
       .limit(1);
 
     if (!merchant) {
-      console.log(`[MerchantResolver] No se encontró merchant para el email: ${normalizedEmail}`);
+      console.log(
+        `[MerchantResolver] No se encontró merchant para el email: ${normalizedEmail}`,
+      );
       return null;
     }
 
-    console.log(`[MerchantResolver] ✓ Merchant encontrado: ${merchant.name} (${merchant.id})`);
+    console.log(
+      `[MerchantResolver] ✓ Merchant encontrado: ${merchant.name} (${merchant.id})`,
+    );
 
     return {
       id: merchant.id,

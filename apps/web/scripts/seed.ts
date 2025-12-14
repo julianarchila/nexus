@@ -64,7 +64,7 @@ const processors = [
   {
     id: "payu",
     name: "PayU",
-    status: "LIVE",
+    status: "IN_PROGRESS",
     supports_payouts: true,
     supports_recurring: true,
     supports_refunds: true,
@@ -491,11 +491,20 @@ const merchants = [
   {
     id: "rappi",
     name: "Rappi",
-    contact_email: "payments@rappi.com",
-    contact_name: "Sebastián Mejía",
+    contact_email: "tenjodiego961@gmail.com",
+    contact_name: "Diego Tenjo",
     lifecycle_stage: "LIVE" as const,
     sales_owner: "María González",
     implementation_owner: "Carlos Ramírez",
+  },
+  {
+    id: "openenglish",
+    name: "Open English",
+    contact_email: "diego.aguirre07@uptc.edu.co",
+    contact_name: "Diego Aguirre",
+    lifecycle_stage: "IMPLEMENTING" as const,
+    sales_owner: "Ana Silva",
+    implementation_owner: "Diego Fernández",
   },
   {
     id: "indrive",
@@ -551,6 +560,34 @@ const scopes = [
     comes_from_mor: false,
     deal_closed_by: "María González",
     is_complete: true,
+  },
+  {
+    id: "openenglish_scope",
+    merchant_id: "openenglish",
+    psps: ["stripe", "mercadopago"],
+    psps_status: "COMPLETE" as const,
+    countries: ["BR", "MX", "CO"],
+    countries_status: "COMPLETE" as const,
+    payment_methods: ["credit_card", "debit_card", "pix", "boleto_bancario"],
+    payment_methods_status: "COMPLETE" as const,
+    expected_volume: "$8M USD/month",
+    expected_volume_status: "COMPLETE" as const,
+    expected_approval_rate: "90%",
+    expected_approval_rate_status: "COMPLETE" as const,
+    restrictions: [
+      "Recurring payments required",
+      "Student verification needed",
+    ],
+    restrictions_status: "COMPLETE" as const,
+    dependencies: ["Subscription billing integration", "CRM sync"],
+    dependencies_status: "COMPLETE" as const,
+    compliance_requirements: ["PCI-DSS", "LGPD"],
+    compliance_status: "COMPLETE" as const,
+    expected_go_live_date: new Date("2025-04-01"),
+    go_live_date_status: "COMPLETE" as const,
+    comes_from_mor: false,
+    deal_closed_by: "Ana Silva",
+    is_complete: false,
   },
   {
     id: "indrive_scope",
@@ -641,7 +678,7 @@ const events = [
     raw_content: `
 Meeting: Rappi Implementation Kickoff
 Date: 2025-01-10
-Participants: Sebastián Mejía (Rappi), Carlos Ramírez (Yuno), María González (Yuno)
+Participants: Diego Tenjo (Rappi), Carlos Ramírez (Yuno), María González (Yuno)
 
 Key Points:
 - Rappi needs to process payments across 5 LATAM countries
@@ -655,12 +692,77 @@ Key Points:
     `,
     metadata: {
       title: "Rappi Implementation Kickoff",
-      participants: ["Sebastián Mejía", "Carlos Ramírez", "María González"],
+      participants: ["Diego Tenjo", "Carlos Ramírez", "María González"],
       duration: 60,
       recorded_at: "2025-01-10T15:00:00Z",
     },
     processing_status: "PROCESSED" as const,
     processed_at: new Date("2025-01-10T16:30:00Z"),
+  },
+  {
+    id: "evt_openenglish_kickoff",
+    merchant_id: "openenglish",
+    source_type: "MEETING" as const,
+    source_id: "gong_call_67891",
+    raw_content: `
+Meeting: Open English Payment Integration Kickoff
+Date: 2025-01-15
+Participants: Diego Aguirre (Open English), Ana Silva (Yuno), Diego Fernández (Yuno)
+
+Key Points:
+- Open English is an online language education platform operating in LATAM
+- Need recurring billing support for monthly subscriptions
+- Operating in Brazil, Mexico, and Colombia
+- Current volume: $8M USD/month in subscription payments
+- PIX is critical for Brazil market (50% of new signups use PIX)
+- Need Boleto for Brazil installment plans (students prefer spreading payments)
+- Credit and debit cards are primary payment methods
+- Target approval rate: 90% to reduce student churn
+- Timeline: Go-live by April 1, 2025
+- Compliance: PCI-DSS, LGPD for Brazilian student data
+- Integration needed with their CRM (Salesforce) and subscription platform
+    `,
+    metadata: {
+      title: "Open English Payment Integration Kickoff",
+      participants: ["Diego Aguirre", "Ana Silva", "Diego Fernández"],
+      duration: 45,
+      recorded_at: "2025-01-15T14:00:00Z",
+    },
+    processing_status: "PROCESSED" as const,
+    processed_at: new Date("2025-01-15T15:00:00Z"),
+  },
+  {
+    id: "evt_indrive_kickoff",
+    merchant_id: "indrive",
+    source_type: "MEETING" as const,
+    source_id: "gong_call_56789",
+    raw_content: `
+Meeting: inDrive Implementation Kickoff
+Date: 2025-01-11
+Participants: Arsen Tomsky (inDrive), Ana Silva (Yuno), Diego Fernández (Yuno)
+
+Key Points:
+- inDrive is transitioning from a Merchant of Record setup - need smooth migration
+- Ride-hailing platform operating in Brazil, Mexico, Colombia, and Peru
+- Current volume: $35M USD/month across LATAM markets
+- PIX is absolutely critical for Brazil - represents 55% of rider transaction volume
+- Real-time driver payouts are essential for their business model
+- Peru market is growing rapidly - Yape integration is priority
+- Mexico expansion requires OXXO for cash payments
+- Target approval rate: 88% to minimize friction for riders
+- Need integration with their existing driver payout system
+- Timeline: Go-live by June 1, 2025
+- Compliance: PCI-DSS, LGPD for Brazil, local labor regulations
+- Technical requirements: Fraud scoring integration, real-time settlement APIs
+    `,
+    metadata: {
+      title: "inDrive Implementation Kickoff",
+      participants: ["Arsen Tomsky", "Ana Silva", "Diego Fernández"],
+      duration: 50,
+      recorded_at: "2025-01-11T10:00:00Z",
+    },
+    processing_status: "PROCESSED" as const,
+    processed_at: new Date("2025-01-11T11:00:00Z"),
   },
   {
     id: "evt_indrive_email",
@@ -748,6 +850,76 @@ const extractions = [
       "Directly stated 'Current volume: $50M USD/month' in the meeting transcript.",
     status: "AUTO_APPLIED" as const,
     applied_at: new Date("2025-01-10T16:35:00Z"),
+    reviewed_by: null,
+  },
+  {
+    id: "ext_openenglish_countries",
+    inbound_event_id: "evt_openenglish_kickoff",
+    merchant_id: "openenglish",
+    target_table: "scope_in_doc",
+    target_field: "countries",
+    extracted_value: { value: ["BR", "MX", "CO"] },
+    confidence: "HIGH" as const,
+    reasoning:
+      "Meeting explicitly states 'Operating in Brazil, Mexico, and Colombia'.",
+    status: "AUTO_APPLIED" as const,
+    applied_at: new Date("2025-01-15T15:05:00Z"),
+    reviewed_by: null,
+  },
+  {
+    id: "ext_openenglish_volume",
+    inbound_event_id: "evt_openenglish_kickoff",
+    merchant_id: "openenglish",
+    target_table: "scope_in_doc",
+    target_field: "expected_volume",
+    extracted_value: { value: "$8M USD/month" },
+    confidence: "HIGH" as const,
+    reasoning:
+      "Diego Aguirre stated 'Current volume: $8M USD/month in subscription payments'.",
+    status: "AUTO_APPLIED" as const,
+    applied_at: new Date("2025-01-15T15:05:00Z"),
+    reviewed_by: null,
+  },
+  {
+    id: "ext_indrive_countries",
+    inbound_event_id: "evt_indrive_kickoff",
+    merchant_id: "indrive",
+    target_table: "scope_in_doc",
+    target_field: "countries",
+    extracted_value: { value: ["BR", "MX", "CO", "PE"] },
+    confidence: "HIGH" as const,
+    reasoning:
+      "Kickoff meeting explicitly lists 'operating in Brazil, Mexico, Colombia, and Peru'.",
+    status: "AUTO_APPLIED" as const,
+    applied_at: new Date("2025-01-11T11:05:00Z"),
+    reviewed_by: null,
+  },
+  {
+    id: "ext_indrive_volume_kickoff",
+    inbound_event_id: "evt_indrive_kickoff",
+    merchant_id: "indrive",
+    target_table: "scope_in_doc",
+    target_field: "expected_volume",
+    extracted_value: { value: "$35M USD/month" },
+    confidence: "HIGH" as const,
+    reasoning:
+      "Kickoff meeting states 'Current volume: $35M USD/month across LATAM markets'.",
+    status: "AUTO_APPLIED" as const,
+    applied_at: new Date("2025-01-11T11:05:00Z"),
+    reviewed_by: null,
+  },
+  {
+    id: "ext_indrive_approval_rate",
+    inbound_event_id: "evt_indrive_kickoff",
+    merchant_id: "indrive",
+    target_table: "scope_in_doc",
+    target_field: "expected_approval_rate",
+    extracted_value: { value: "88%" },
+    confidence: "HIGH" as const,
+    reasoning:
+      "Kickoff meeting specifies 'Target approval rate: 88% to minimize friction for riders'.",
+    status: "AUTO_APPLIED" as const,
+    applied_at: new Date("2025-01-11T11:05:00Z"),
     reviewed_by: null,
   },
   {
@@ -867,6 +1039,115 @@ const audits = [
     ai_extraction_id: null,
   },
   {
+    id: "audit_openenglish_create",
+    merchant_id: "openenglish",
+    target_table: "merchant_profile",
+    target_id: "openenglish",
+    target_field: null,
+    change_type: "CREATE" as const,
+    old_value: null,
+    new_value: {
+      id: "openenglish",
+      name: "Open English",
+      lifecycle_stage: "SCOPING",
+    },
+    actor_type: "USER" as const,
+    actor_id: "ana_silva",
+    source_type: "MANUAL" as const,
+    source_id: null,
+    reason: "New merchant onboarded - EdTech subscription business",
+    ai_extraction_id: null,
+  },
+  {
+    id: "audit_openenglish_countries",
+    merchant_id: "openenglish",
+    target_table: "scope_in_doc",
+    target_id: "openenglish_scope",
+    target_field: "countries",
+    change_type: "UPDATE" as const,
+    old_value: [],
+    new_value: ["BR", "MX", "CO"],
+    actor_type: "AI" as const,
+    actor_id: null,
+    source_type: "MEETING" as const,
+    source_id: "evt_openenglish_kickoff",
+    reason:
+      "AI extracted operating countries from kickoff meeting. Diego Aguirre explicitly mentioned Brazil, Mexico, and Colombia.",
+    ai_extraction_id: "ext_openenglish_countries",
+  },
+  {
+    id: "audit_openenglish_stage_implementing",
+    merchant_id: "openenglish",
+    target_table: "merchant_profile",
+    target_id: "openenglish",
+    target_field: "lifecycle_stage",
+    change_type: "STAGE_CHANGE" as const,
+    old_value: "SCOPING",
+    new_value: "IMPLEMENTING",
+    actor_type: "USER" as const,
+    actor_id: "diego_fernandez",
+    source_type: "MANUAL" as const,
+    source_id: null,
+    reason:
+      "Scope approved by Diego Aguirre. Moving to implementation for recurring billing integration.",
+    ai_extraction_id: null,
+  },
+  {
+    id: "audit_indrive_create",
+    merchant_id: "indrive",
+    target_table: "merchant_profile",
+    target_id: "indrive",
+    target_field: null,
+    change_type: "CREATE" as const,
+    old_value: null,
+    new_value: {
+      id: "indrive",
+      name: "inDrive",
+      lifecycle_stage: "SCOPING",
+    },
+    actor_type: "USER" as const,
+    actor_id: "ana_silva",
+    source_type: "MANUAL" as const,
+    source_id: null,
+    reason:
+      "New merchant onboarded - ride-hailing platform from MOR transition",
+    ai_extraction_id: null,
+  },
+  {
+    id: "audit_indrive_countries",
+    merchant_id: "indrive",
+    target_table: "scope_in_doc",
+    target_id: "indrive_scope",
+    target_field: "countries",
+    change_type: "UPDATE" as const,
+    old_value: [],
+    new_value: ["BR", "MX", "CO", "PE"],
+    actor_type: "AI" as const,
+    actor_id: null,
+    source_type: "MEETING" as const,
+    source_id: "evt_indrive_kickoff",
+    reason:
+      "AI extracted country list from kickoff meeting. Arsen mentioned Brazil, Mexico, Colombia, and Peru as active markets.",
+    ai_extraction_id: "ext_indrive_countries",
+  },
+  {
+    id: "audit_indrive_stage_implementing",
+    merchant_id: "indrive",
+    target_table: "merchant_profile",
+    target_id: "indrive",
+    target_field: "lifecycle_stage",
+    change_type: "STAGE_CHANGE" as const,
+    old_value: "SCOPING",
+    new_value: "IMPLEMENTING",
+    actor_type: "USER" as const,
+    actor_id: "ana_silva",
+    source_type: "MANUAL" as const,
+    source_id: null,
+    reason:
+      "Scope complete with all PSPs, countries, and payment methods confirmed. Starting technical implementation phase.",
+    ai_extraction_id: null,
+  },
+  {
     id: "audit_indrive_mor",
     merchant_id: "indrive",
     target_table: "scope_in_doc",
@@ -924,6 +1205,28 @@ const attachments = [
     category: "TECHNICAL_DOC" as const,
     description: "API integration requirements and webhook specifications",
     uploaded_by: "carlos_ramirez",
+  },
+  {
+    id: "attach_openenglish_contract",
+    merchant_id: "openenglish",
+    filename: "OpenEnglish_MSA_2025.pdf",
+    file_type: "application/pdf",
+    file_size: 1987456,
+    storage_url: "s3://yuno-docs/openenglish/contracts/msa_2025.pdf",
+    category: "CONTRACT" as const,
+    description: "Master Service Agreement - Signed January 2025",
+    uploaded_by: "ana_silva",
+  },
+  {
+    id: "attach_openenglish_recurring_spec",
+    merchant_id: "openenglish",
+    filename: "OpenEnglish_Recurring_Billing_Spec.pdf",
+    file_type: "application/pdf",
+    file_size: 856432,
+    storage_url: "s3://yuno-docs/openenglish/technical/recurring_billing.pdf",
+    category: "TECHNICAL_DOC" as const,
+    description: "Recurring billing and subscription management requirements",
+    uploaded_by: "diego_fernandez",
   },
   {
     id: "attach_indrive_payout_spec",

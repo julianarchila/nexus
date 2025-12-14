@@ -3,11 +3,11 @@
 import { AlertCircle, CheckCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { LifecycleStage } from "@/core/db/schema";
-import type { ImplementationReadinessResult } from "@/core/services/pipeline/implementation-readiness";
+import type { ImplementationReadinessResult } from "@/core/services/implementation-readiness.service";
 import {
   getScopeFieldLabel,
   type ScopeReadinessResult,
-} from "@/core/services/pipeline/scope-readiness";
+} from "@/core/domain/scope/scope-readiness";
 
 interface ReadinessIndicatorProps {
   lifecycleStage: LifecycleStage;
