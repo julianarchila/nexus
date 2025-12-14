@@ -16,6 +16,15 @@ export interface GongReceivedPayload {
   recordedAt: string;
 }
 
+export interface GmailReceivedPayload {
+  messageId: string;
+  subject: string | null;
+  from: string | null;
+  to: string | null;
+  date: string | null;
+  raw_data: any; // Full Gmail message object
+}
+
 export interface ManualReceivedPayload {
   merchantId: string;
   content: string;
@@ -36,6 +45,7 @@ export interface ExtractionCompletedPayload {
 // Type-safe event map for Inngest client
 export type IngestionEvents = {
   "ingest/gong.received": { data: GongReceivedPayload };
+  "ingest/gmail.received": { data: GmailReceivedPayload };
   "ingest/manual.received": { data: ManualReceivedPayload };
   "ingest/event.created": { data: EventCreatedPayload };
   "extraction/completed": { data: ExtractionCompletedPayload };

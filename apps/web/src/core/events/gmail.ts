@@ -1,10 +1,32 @@
 import { google } from "googleapis";
 import { inngest } from "@/lib/inngest";
-import {
-    type GmailWebhookData,
-    type GmailNotificationData,
-    type NormalizedEmailData,
-} from "@/core/services/gmail-extractor";
+import type { GmailWebhookData, GmailNotificationData } from "@/core/services/gmail-extractor";
+
+/**
+ * Gmail Integration Flow:
+ * 
+ * 1. Gmail webhook (this file) -> "gmail/email.received"
+ *    - Receives Pub/Sub notification
+ *    - Fetches full email from Gmail API
+ *    - Emits "ingest/gmail.received"
+ * 
+ * 2. Gmail Adapter (ingestion/adapters/gmail.adapter.ts) -> "ingest/gmail.received"
+ *    - Extracts sender email
+ *    - Resolves merchant
+ *    - Creates inbound_event record
+ *    - Emits "ingest/event.created"
+ * 
+ * 3. Process Event (ingestion/pipeline/process-event.ts) -> "ingest/event.created"
+ *    - Loads scope context
+ *    - AI extraction (batch mode)
+ *    - Saves ai_extraction records
+ *    - Emits "extraction/completed"
+ * 
+ * 4. Apply Extraction (ingestion/application/apply-extraction.ts) -> "extraction/completed"
+ *    - Auto-applies HIGH confidence extractions
+ *    - Creates audit logs
+ *    - Updates scope_in_doc
+ */
 
 // Configure OAuth2 client
 const oauth2Client = new google.auth.OAuth2(
@@ -29,6 +51,14 @@ export const gmailEmailReceived = inngest.createFunction(
     async ({ event, step }) => {
         const webhookData = event.data as GmailWebhookData;
 
+        // Configure OAuth2 credentials once at the start
+        oauth2Client.setCredentials({
+            refresh_token: process.env.GMAIL_REFRESH_TOKEN,
+        });
+
+        // Create Gmail client with configured auth
+        const gmail = google.gmail({ version: "v1", auth: oauth2Client });
+
         // 1. Decode base64 data from Pub/Sub
         const decodedData = await step.run("decode-pubsub-message", async () => {
             const base64Data = webhookData.message.data;
@@ -42,44 +72,27 @@ export const gmailEmailReceived = inngest.createFunction(
         console.log(`[Gmail Event] History ID: ${decodedData.historyId}`);
         console.log("=".repeat(60) + "\n");
 
-        // 2. Fetch Gmail history to get new messages
-        const history = await step.run("fetch-gmail-history", async () => {
-            // Set credentials with refresh token
-            oauth2Client.setCredentials({
-                refresh_token: process.env.GMAIL_REFRESH_TOKEN,
+        // 2. Fetch latest message (the historyId in webhook is AFTER the change, not before)
+        // So we can't use it directly with history.list. Instead, fetch recent messages.
+        const latestMessage = await step.run("fetch-latest-message", async () => {
+            // Get messages from the last 5 minutes to catch the new one
+            const fiveMinutesAgo = Math.floor((Date.now() - 5 * 60 * 1000) / 1000);
+
+            const res = await gmail.users.messages.list({
+                userId: "me",
+                maxResults: 5, // Get a few recent messages
+                q: `after:${fiveMinutesAgo}`, // Messages from last 5 minutes
             });
 
-            const gmail = google.gmail({ version: "v1", auth: oauth2Client });
-
-            try {
-                const res = await gmail.users.history.list({
-                    userId: "me",
-                    startHistoryId: decodedData.historyId.toString(),
-                    historyTypes: ["messageAdded"], // Only new emails
-                });
-
-                return res.data;
-            } catch (error: any) {
-                // If historyId is too old (404/410), fallback to latest messages
-                if (error.code === 404 || error.code === 410) {
-                    console.warn(
-                        `[Gmail Event] HistoryId too old, fetching latest messages as fallback`,
-                    );
-                    const res = await gmail.users.messages.list({
-                        userId: "me",
-                        maxResults: 1,
-                    });
-                    return { history: [{ messagesAdded: res.data.messages?.map(m => ({ message: m })) }] };
-                }
-                throw error;
-            }
+            // Return the most recent message
+            return res.data.messages?.[0] || null;
         });
 
         // 3. Extract the new message ID
-        const newMessage = history.history?.[0]?.messagesAdded?.[0]?.message;
+        const newMessage = latestMessage;
 
         if (!newMessage?.id) {
-            console.log("[Gmail Event] No new messages found in history");
+            console.log("[Gmail Event] No new messages found in history or fallback");
             return { status: "no_new_messages_found" };
         }
 
@@ -87,7 +100,6 @@ export const gmailEmailReceived = inngest.createFunction(
 
         // 4. Fetch full email details
         const emailFullDetails = await step.run("get-email-details", async () => {
-            const gmail = google.gmail({ version: "v1", auth: oauth2Client });
             const res = await gmail.users.messages.get({
                 userId: "me",
                 id: newMessage.id!,
@@ -96,37 +108,36 @@ export const gmailEmailReceived = inngest.createFunction(
             return res.data;
         });
 
-        // 5. Normalize and send to Layer 2
-        const normalizedData: NormalizedEmailData = {
-            source: "gmail",
-            raw_data: emailFullDetails,
-            metadata: {
-                subject: getHeader(emailFullDetails, "Subject"),
-                from: getHeader(emailFullDetails, "From"),
-                to: getHeader(emailFullDetails, "To"),
-                date: getHeader(emailFullDetails, "Date"),
-                historyId: decodedData.historyId,
-                messageId: newMessage.id!,
-            },
-        };
+        // 5. Extract metadata
+        const subject = getHeader(emailFullDetails, "Subject");
+        const from = getHeader(emailFullDetails, "From");
+        const to = getHeader(emailFullDetails, "To");
+        const date = getHeader(emailFullDetails, "Date");
 
         console.log("\n" + "=".repeat(60));
         console.log(`[Gmail Event] Email Details:`);
-        console.log(`  Subject: ${normalizedData.metadata.subject}`);
-        console.log(`  From: ${normalizedData.metadata.from}`);
-        console.log(`  To: ${normalizedData.metadata.to}`);
+        console.log(`  Subject: ${subject}`);
+        console.log(`  From: ${from}`);
+        console.log(`  To: ${to}`);
         console.log("=".repeat(60) + "\n");
 
-        // Send to Layer 2 (AI Extraction)
-        await step.sendEvent("ingest-event-created", {
-            name: "ingest/event.created",
-            data: normalizedData,
+        // 6. Send to Layer 1 (Gmail Adapter)
+        await step.sendEvent("send-to-adapter", {
+            name: "ingest/gmail.received",
+            data: {
+                messageId: newMessage.id!,
+                subject,
+                from,
+                to,
+                date,
+                raw_data: emailFullDetails,
+            },
         });
 
         return {
             success: true,
             messageId: newMessage.id,
-            subject: normalizedData.metadata.subject,
+            subject,
         };
     },
 );
