@@ -172,25 +172,60 @@ nexus/
 │   ├── src/
 │   │   ├── app/                      # Next.js pages (App Router)
 │   │   │   ├── (dashboard)/          # Dashboard page
+│   │   │   │   ├── data-access/      # Server-side queries
+│   │   │   │   ├── hooks/            # Client hooks
+│   │   │   │   └── page.tsx
 │   │   │   ├── merchants/[id]/       # Merchant detail page
+│   │   │   │   ├── data-access/      # Server-side queries
+│   │   │   │   ├── hooks/            # Client hooks
+│   │   │   │   └── page.tsx
 │   │   │   ├── payment-processors/   # PSP catalog page
-│   │   │   └── api/                  # API routes (TRPC, Inngest)
-│   │   ├── components/               # UI components
+│   │   │   │   ├── components/       # Feature components
+│   │   │   │   ├── data-access/      # Server-side queries
+│   │   │   │   ├── hooks/            # Client hooks
+│   │   │   │   └── page.tsx
+│   │   │   └── api/                  # API routes
+│   │   │       ├── trpc/[trpc]/      # TRPC endpoint
+│   │   │       ├── inngest/          # Inngest webhook
+│   │   │       └── webhooks/         # External webhooks
+│   │   ├── components/               # Shared UI components
 │   │   │   ├── ui/                   # shadcn/ui primitives
 │   │   │   ├── pipeline/             # Stage transition, readiness
-│   │   │   └── scope/                # Scope editor
-│   │   ├── core/                     # Business logic
-│   │   │   ├── db/                   # Drizzle schema + client
-│   │   │   ├── ingestion/            # AI pipeline (adapters, processing)
-│   │   │   └── services/             # Business logic (audit, pipeline)
-│   │   ├── hooks/                    # React hooks
-│   │   └── lib/                      # Utilities (TRPC, Inngest, utils)
-│   └── scripts/
+│   │   │   ├── scope/                # Scope editor
+│   │   │   ├── app-sidebar.tsx       # App navigation
+│   │   │   ├── merchants-table.tsx   # Merchant list table
+│   │   │   └── payments.tsx          # Payment components
+│   │   ├── core/                     # Business logic layer
+│   │   │   ├── db/                   # Database layer
+│   │   │   │   ├── schema.ts         # Drizzle schema definitions
+│   │   │   │   └── client.ts         # Database client
+│   │   │   ├── domain/               # Domain logic
+│   │   │   │   └── scope/            # Scope domain logic
+│   │   │   ├── integrations/         # External integrations
+│   │   │   │   └── ai/               # AI extraction service
+│   │   │   ├── repositories/         # Data access layer
+│   │   │   ├── services/             # Business services
+│   │   │   ├── use-cases/            # Application use cases
+│   │   │   └── workflows/            # Inngest workflows
+│   │   │       ├── adapters/         # Source adapters (Gong, Gmail)
+│   │   │       ├── process-event.ts  # Event processing workflow
+│   │   │       ├── apply-extraction.ts # Auto-apply workflow
+│   │   │       └── index.ts
+│   │   ├── hooks/                    # Shared React hooks
+│   │   └── lib/                      # Shared utilities
+│   │       ├── trpc/                 # TRPC setup (client, server, router)
+│   │       ├── pdf/                  # PDF generation utilities
+│   │       ├── inngest.ts            # Inngest client
+│   │       ├── model.ts              # AI model config
+│   │       └── utils.ts              # Shared utilities
+│   └── scripts/                      # Utility scripts
 │       ├── seed.ts                   # Database seeding
-│       └── gong.ts                   # Simulate Gong webhooks
-├── docs/
-│   ├── context.md                    # System overview
-│   └── ingestion-system-design.md    # Ingestion pipeline design
+│       ├── seed-clean.ts             # Clean seed data
+│       ├── gong.ts                   # Simulate Gong webhooks
+│       ├── get-gmail-token.ts        # Gmail OAuth setup
+│       └── create-test-merchant.ts   # Create test data
+├── context.md                        # System overview & context
+├── AGENTS.md                         # AI agent instructions
 └── README.md
 ```
 
