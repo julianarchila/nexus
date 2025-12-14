@@ -274,7 +274,7 @@ export default function MerchantPage({
           className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300"
         >
           {scope ? (
-            <ScopeEditor scope={scope} merchantId={id} />
+            <ScopeEditor scope={scope} merchantId={id} merchantName={merchant.name} />
           ) : (
             <div className="bg-white rounded-xl border border-gray-100 p-8 text-center">
               <p className="text-slate-500">No scope data available</p>

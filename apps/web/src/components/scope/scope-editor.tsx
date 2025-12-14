@@ -10,6 +10,7 @@ import {
   Plus,
   Save,
   X,
+  Download
 } from "lucide-react";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
@@ -17,6 +18,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useTRPC } from "@/lib/trpc/client";
+import { useScopePDF } from "@/lib/pdf/use-scope-pdf";
+import type { ScopePDFData } from "@/lib/pdf";
 
 // Types for scope data
 interface ScopeData {
@@ -47,6 +50,7 @@ interface ScopeData {
 interface ScopeEditorProps {
   scope: ScopeData;
   merchantId: string;
+  merchantName?: string;
 }
 
 // Form state type
@@ -67,12 +71,13 @@ interface FormData {
 // Critical fields required to move to IMPLEMENTING
 const CRITICAL_FIELDS = ["psps", "countries", "payment_methods"] as const;
 
-export function ScopeEditor({ scope, merchantId }: ScopeEditorProps) {
+export function ScopeEditor({ scope, merchantId, merchantName = "Merchant" }: ScopeEditorProps) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<FormData>(scopeToFormData(scope));
   const [tagInputs, setTagInputs] = useState<Record<string, string>>({});
+  const { generatePDF, isGenerating } = useScopePDF();
 
   const updateScope = useMutation(
     trpc.scope.updateScope.mutationOptions({
@@ -199,6 +204,38 @@ export function ScopeEditor({ scope, merchantId }: ScopeEditorProps) {
     }));
   }, []);
 
+  const handleDownloadPDF = useCallback(async () => {
+    const pdfData: ScopePDFData = {
+      merchantName,
+      merchantId,
+      generatedDate: new Date(),
+      scope: {
+        psps: scope.psps || [],
+        pspsStatus: scope.psps_status,
+        countries: scope.countries || [],
+        countriesStatus: scope.countries_status,
+        paymentMethods: scope.payment_methods || [],
+        paymentMethodsStatus: scope.payment_methods_status,
+        expectedVolume: scope.expected_volume,
+        expectedVolumeStatus: scope.expected_volume_status,
+        expectedApprovalRate: scope.expected_approval_rate,
+        expectedApprovalRateStatus: scope.expected_approval_rate_status,
+        restrictions: scope.restrictions || [],
+        restrictionsStatus: scope.restrictions_status,
+        dependencies: scope.dependencies || [],
+        dependenciesStatus: scope.dependencies_status,
+        complianceRequirements: scope.compliance_requirements || [],
+        complianceStatus: scope.compliance_status,
+        expectedGoLiveDate: scope.expected_go_live_date ? new Date(scope.expected_go_live_date) : null,
+        goLiveDateStatus: scope.go_live_date_status,
+        comesFromMor: scope.comes_from_mor,
+        dealClosedBy: scope.deal_closed_by,
+      },
+    };
+
+    await generatePDF(pdfData);
+  }, [scope, merchantId, merchantName, generatePDF]);
+
   // Check missing critical fields for warning
   const missingCriticalFields = CRITICAL_FIELDS.filter((field) => {
     const value = formData[field];
@@ -214,10 +251,25 @@ export function ScopeEditor({ scope, merchantId }: ScopeEditorProps) {
             <Globe className="h-4 w-4 text-slate-500" />
             Scope In Doc
           </h3>
-          <Button variant="outline" size="sm" onClick={startEditing}>
-            <Pencil className="h-4 w-4 mr-2" />
-            Edit Scope
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDownloadPDF}
+              disabled={isGenerating}
+            >
+              {isGenerating ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4 mr-2" />
+              )}
+              Download PDF
+            </Button>
+            <Button variant="outline" size="sm" onClick={startEditing}>
+              <Pencil className="h-4 w-4 mr-2" />
+              Edit Scope
+            </Button>
+          </div>
         </div>
         <div className="divide-y divide-gray-50">
           {/* Core Requirements */}
