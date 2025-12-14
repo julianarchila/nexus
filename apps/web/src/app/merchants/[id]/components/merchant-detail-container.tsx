@@ -26,6 +26,7 @@ import type { LifecycleStage } from "@/core/db/schema";
 import { useMerchantDetail } from "../hooks/use-merchant-detail";
 import { ActivityLogPanel } from "./activity-log-panel";
 import { DocumentsPanel } from "./documents-panel";
+import { EventsPanel } from "./events-panel";
 import { MerchantDetailLoader } from "./merchant-detail-loader";
 
 // Lifecycle stage styles
@@ -299,7 +300,7 @@ export function MerchantDetailContainer({
           value="activity"
           className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300"
         >
-          <ActivityLogPanel merchantId={merchantId} expanded />
+          <EventsPanel merchantId={merchantId} />
         </TabsContent>
       </Tabs>
 

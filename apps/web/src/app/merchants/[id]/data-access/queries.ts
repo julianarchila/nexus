@@ -46,8 +46,25 @@ export function useAuditLogQueryOptions(
   };
 }
 
+/**
+ * Query options for inbound events
+ * Pattern 1: Small dataset per merchant, client-side filtering
+ */
+export function useEventsQueryOptions(merchantId: string) {
+  const trpc = useTRPC();
+
+  return {
+    events: trpc.inboundEvents.getByMerchantId.queryOptions({
+      merchantId,
+    }),
+  };
+}
+
 // 5 minutes for merchant data
 export const MERCHANT_STALE_TIME = 1000 * 60 * 5;
 
 // 2 minutes for audit log (more dynamic)
 export const AUDIT_LOG_STALE_TIME = 1000 * 60 * 2;
+
+// 2 minutes for events (same as audit log)
+export const EVENTS_STALE_TIME = 1000 * 60 * 2;
