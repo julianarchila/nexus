@@ -43,7 +43,7 @@ const auditLogFiltersInput = paginationInput.extend({
   actorType: z.enum(["AI", "USER", "SYSTEM"]).optional(),
 });
 
-const inboundEventsFiltersInput = paginationInput.extend({
+const inboundEventsFiltersInput = z.object({
   merchantId: z.string(),
   sourceType: z
     .enum(["MEETING", "EMAIL", "SLACK", "SALESFORCE", "DOCUMENT", "MANUAL"])
@@ -457,14 +457,13 @@ export const appRouter = router({
   // ===========================================
   inboundEvents: router({
     /**
-     * Get paginated inbound events for a merchant
-     * Pattern 2: Server-side pagination
+     * Get all inbound events for a merchant
+     * Pattern 1: Small dataset per merchant, client-side filtering
      */
     getByMerchantId: publicProcedure
       .input(inboundEventsFiltersInput)
       .query(async ({ input }) => {
-        const { merchantId, page, pageSize, sourceType } = input;
-        const offset = (page - 1) * pageSize;
+        const { merchantId, sourceType } = input;
 
         // Build where conditions
         const conditions = [eq(inboundEvent.merchant_id, merchantId)];
@@ -474,32 +473,14 @@ export const appRouter = router({
           );
         }
 
-        // Get total count
-        const countResult = await db
-          .select({ count: sql<number>`count(*)::int` })
-          .from(inboundEvent)
-          .where(and(...conditions));
-
-        const total = countResult[0]?.count ?? 0;
-
-        // Get paginated data
+        // Get all events for this merchant
         const data = await db
           .select()
           .from(inboundEvent)
           .where(and(...conditions))
-          .orderBy(desc(inboundEvent.created_at))
-          .limit(pageSize)
-          .offset(offset);
+          .orderBy(desc(inboundEvent.created_at));
 
-        return {
-          data,
-          pagination: {
-            page,
-            pageSize,
-            total,
-            totalPages: Math.ceil(total / pageSize),
-          },
-        };
+        return data;
       }),
   }),
 
