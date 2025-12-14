@@ -7,12 +7,11 @@ import {
   Circle,
   FileText,
   Filter,
-  Loader2,
   MoreHorizontal,
   Search,
 } from "lucide-react";
 import Link from "next/link";
-import { useMerchantsList } from "@/app/(dashboard)/hooks/use-merchants-list";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -57,35 +56,33 @@ const stageLabels: Record<LifecycleStage, string> = {
   LIVE: "Live",
 };
 
-export function MerchantsTable() {
-  const {
-    merchants,
-    isLoading,
-    isError,
-    error,
-    search,
-    setSearch,
-    stageFilter,
-    setStageFilter,
-  } = useMerchantsList();
+// Types for the merchant data
+type Merchant = {
+  id: string;
+  name: string;
+  lifecycle_stage: LifecycleStage;
+  scope_is_complete: boolean | null;
+  contact_email: string;
+  contact_name: string | null;
+  sales_owner: string | null;
+  implementation_owner: string | null;
+};
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
-      </div>
-    );
-  }
+type MerchantsTableProps = {
+  merchants: Merchant[];
+  search: string;
+  setSearch: (value: string) => void;
+  stageFilter: LifecycleStage | "ALL";
+  setStageFilter: (value: LifecycleStage | "ALL") => void;
+};
 
-  if (isError) {
-    return (
-      <div className="flex flex-col items-center justify-center h-64 text-center">
-        <p className="text-red-500 font-medium">Failed to load merchants</p>
-        <p className="text-sm text-slate-500 mt-1">{error?.message}</p>
-      </div>
-    );
-  }
-
+export function MerchantsTable({
+  merchants,
+  search,
+  setSearch,
+  stageFilter,
+  setStageFilter,
+}: MerchantsTableProps) {
   return (
     <div className="space-y-4">
       {/* Toolbar */}

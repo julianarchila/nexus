@@ -68,11 +68,37 @@ Merchant Control & Readiness System for Yuno. Centralizes merchant context from 
 
 ### Key Components
 
-**Frontend**
+**Frontend** (Feature-Sliced Architecture)
 - **Dashboard**: Merchant list with filtering and search
 - **Merchant Detail**: Multi-tab view (Overview, Scoping, Documents, Activity)
 - **Scope Editor**: Interactive form for editing implementation requirements
 - **PSP Catalog**: Payment processor search and capabilities
+
+
+Each route follows a **Feature-Sliced** architecture with clear separation of concerns:
+
+```
+app/{route}/
+├── components/
+│   ├── {feature}-container.tsx   # Orchestrates hooks + loading/error states
+│   ├── {feature}-loader.tsx      # Skeleton UI
+│   └── {feature}-table.tsx       # Pure presentation (props only)
+├── data-access/
+│   └── queries.ts                # Query options + stale times
+├── hooks/
+│   ├── index.ts                  # Barrel export
+│   ├── use-{feature}-data.ts     # Data fetching + derived state
+│   └── use-{feature}-filters.ts  # UI state (search, filters, pagination)
+└── page.tsx                      # Minimal - layout + container
+```
+
+**Key principles:**
+- **Pages are minimal** - Just unwrap params and render a container
+- **Containers orchestrate** - Combine hooks, handle loading/error, compose presentation
+- **Presentation is pure** - Receives data via props, no internal data fetching
+- **Hooks own state** - Both server state (TanStack Query) and UI state (filters)
+- **Query options are centralized** - Stale times and query keys in `data-access/`
+- **Shared components in `/components`** - Only truly reusable components (ui primitives, pipeline widgets)
 
 **API Layer** (TRPC - type-safe)
 - `merchants`: CRUD operations, list with filters
@@ -170,62 +196,41 @@ This script sends fake meeting transcripts through the ingestion pipeline to tes
 nexus/
 ├── apps/web/
 │   ├── src/
-│   │   ├── app/                      # Next.js pages (App Router)
-│   │   │   ├── (dashboard)/          # Dashboard page
-│   │   │   │   ├── data-access/      # Server-side queries
-│   │   │   │   ├── hooks/            # Client hooks
+│   │   ├── app/                      # Next.js App Router
+│   │   │   ├── (dashboard)/          # Dashboard route
+│   │   │   │   ├── components/       # Container, Loader, Table
+│   │   │   │   ├── data-access/      # Query options
+│   │   │   │   ├── hooks/            # useMerchantsList
 │   │   │   │   └── page.tsx
-│   │   │   ├── merchants/[id]/       # Merchant detail page
-│   │   │   │   ├── data-access/      # Server-side queries
-│   │   │   │   ├── hooks/            # Client hooks
+│   │   │   ├── merchants/[id]/       # Merchant detail route
+│   │   │   │   ├── components/       # Container, Loader, ActivityLogPanel
+│   │   │   │   ├── data-access/      # Query options
+│   │   │   │   ├── hooks/            # useMerchantDetail, useMerchantAuditLog
 │   │   │   │   └── page.tsx
-│   │   │   ├── payment-processors/   # PSP catalog page
-│   │   │   │   ├── components/       # Feature components
-│   │   │   │   ├── data-access/      # Server-side queries
-│   │   │   │   ├── hooks/            # Client hooks
+│   │   │   ├── payment-processors/   # PSP catalog route
+│   │   │   │   ├── components/       # Container, Loader, Table
+│   │   │   │   ├── data-access/      # Query options
+│   │   │   │   ├── hooks/            # usePaymentProcessorsData, useFilters
 │   │   │   │   └── page.tsx
 │   │   │   └── api/                  # API routes
 │   │   │       ├── trpc/[trpc]/      # TRPC endpoint
 │   │   │       ├── inngest/          # Inngest webhook
 │   │   │       └── webhooks/         # External webhooks
-│   │   ├── components/               # Shared UI components
+│   │   ├── components/               # Shared components
 │   │   │   ├── ui/                   # shadcn/ui primitives
 │   │   │   ├── pipeline/             # Stage transition, readiness
-│   │   │   ├── scope/                # Scope editor
-│   │   │   ├── app-sidebar.tsx       # App navigation
-│   │   │   ├── merchants-table.tsx   # Merchant list table
-│   │   │   └── payments.tsx          # Payment components
+│   │   │   └── scope/                # Scope editor
 │   │   ├── core/                     # Business logic layer
-│   │   │   ├── db/                   # Database layer
-│   │   │   │   ├── schema.ts         # Drizzle schema definitions
-│   │   │   │   └── client.ts         # Database client
+│   │   │   ├── db/                   # Schema + client
 │   │   │   ├── domain/               # Domain logic
-│   │   │   │   └── scope/            # Scope domain logic
-│   │   │   ├── integrations/         # External integrations
-│   │   │   │   └── ai/               # AI extraction service
-│   │   │   ├── repositories/         # Data access layer
+│   │   │   ├── integrations/ai/      # AI extraction
+│   │   │   ├── repositories/         # Data access
 │   │   │   ├── services/             # Business services
 │   │   │   ├── use-cases/            # Application use cases
-│   │   │   └── workflows/            # Inngest workflows
-│   │   │       ├── adapters/         # Source adapters (Gong, Gmail)
-│   │   │       ├── process-event.ts  # Event processing workflow
-│   │   │       ├── apply-extraction.ts # Auto-apply workflow
-│   │   │       └── index.ts
+│   │   │   └── workflows/            # Inngest workflows + adapters
 │   │   ├── hooks/                    # Shared React hooks
-│   │   └── lib/                      # Shared utilities
-│   │       ├── trpc/                 # TRPC setup (client, server, router)
-│   │       ├── pdf/                  # PDF generation utilities
-│   │       ├── inngest.ts            # Inngest client
-│   │       ├── model.ts              # AI model config
-│   │       └── utils.ts              # Shared utilities
-│   └── scripts/                      # Utility scripts
-│       ├── seed.ts                   # Database seeding
-│       ├── seed-clean.ts             # Clean seed data
-│       ├── gong.ts                   # Simulate Gong webhooks
-│       ├── get-gmail-token.ts        # Gmail OAuth setup
-│       └── create-test-merchant.ts   # Create test data
-├── context.md                        # System overview & context
-├── AGENTS.md                         # AI agent instructions
+│   │   └── lib/                      # Utilities (trpc, pdf, inngest)
+│   └── scripts/                      # Seed, simulate webhooks, etc.
 └── README.md
 ```
 

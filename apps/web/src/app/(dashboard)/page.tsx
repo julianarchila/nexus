@@ -1,7 +1,4 @@
-import { Plus } from "lucide-react";
-
-import { MerchantsTable } from "@/components/merchants-table";
-import { Button } from "@/components/ui/button";
+import { MerchantsContainer } from "./components/merchants-container";
 
 export default function Home() {
   return (
@@ -24,7 +21,7 @@ export default function Home() {
       </div>
 
       {/* Main Content */}
-      <MerchantsTable />
+      <MerchantsContainer />
     </div>
   );
 }
